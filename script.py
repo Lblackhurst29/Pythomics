@@ -1,2 +1,5 @@
-for i in 1:5;
-	print(i)
+def add(x,y):
+	result = x + y
+	return(result)
+
+print(add(3,7))
