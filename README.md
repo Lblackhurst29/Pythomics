@@ -1,3 +1,3 @@
 **Pythomics**
 
-A data-analysis toolbox created in the python language for  use with the data collected from the biological hardware the 'Ethoscopes'
+A data-analysis toolbox utilising the python language for use with data collected from 'Ethoscopes' a Drosophila video monitoring system
