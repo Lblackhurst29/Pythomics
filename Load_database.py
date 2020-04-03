@@ -7,11 +7,12 @@ import numpy as np
 from sqlite3 import Error
 
 # Location of database **Test**
-path = r"C:\Users\Loz\github\Test DB\2016-01-25_21-46-14_014.db"
+path = r"C:\Users\Loz\github\Test_DB\2020-02-04_12-54-50_1298b7565b6948efb9a39b5d5d21e789.db"
 
 def _path_to_uri(path):
     """ change path to URI compatability
         path = location of database """
+
     path = pathlib.Path(path)
     if path.is_absolute():
         return path.as_uri()
@@ -35,11 +36,8 @@ def create_connection(db_file):
 if __name__ == '__main__':
     con = create_connection(path)
 
-cur = con.cursor()
-
-cur.execute("select * from ROI_4")
-
-print(cur.fetchall())
+df = pd.read_sql_query('SELECT * FROM ROI_MAP', con, index_col = 'roi_idx')
+print(df.head())
 
 con.close()
     
