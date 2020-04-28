@@ -13,11 +13,11 @@ def read_meta(path):
         print("An error occurred: ", e)
 
     meta = meta.drop_duplicates(subset = 'machine_name')
+    meta = meta[['machine_name', 'date']]
 
-    #meta = meta[['machine_name', 'date']]
 
-
-print(read_meta(path))  
+meta_df = read_meta(path)
+print(meta_df)  
 
 
 

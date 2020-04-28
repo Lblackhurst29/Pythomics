@@ -73,4 +73,7 @@ for i in range(len(path_list)):
     full_path_list.append(inital_path + "\\" + path_list[i][0][0])
 
 print(full_path_list[0])
+print(full_path_list[1])
+print(full_path_list[2])
+print(full_path_list[3])
 
