@@ -36,7 +36,7 @@ def create_connection(db_file):
 if __name__ == '__main__':
     con = create_connection(path)
 
-df = pd.read_sql_query('SELECT * FROM ROI_MAP', con, index_col = 'roi_idx')
+df = pd.read_sql_query('SELECT * table_name FROM database_name', con) #index_col = 'roi_idx')
 print(df.head())
 
 con.close()
