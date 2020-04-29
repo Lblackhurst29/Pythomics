@@ -4,7 +4,7 @@ from load_metafile import read_meta
 
 pd.options.display.max_colwidth = 50
 
-def list_paths(metadata, index_file, user_dir):
+def link_meta_index(metadata, index_file, user_dir):
     """ """
     #load metadata csv file
     meta_df = read_meta(metadata)
