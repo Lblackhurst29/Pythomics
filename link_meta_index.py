@@ -1,13 +1,25 @@
 import pandas as pd
 import numpy as np 
 from load_metafile import read_meta
-
-pd.options.display.max_colwidth = 50
+from datetime import datetime
 
 def link_meta_index(metadata, index_file, user_dir):
     """ """
     #load metadata csv file
     meta_df = read_meta(metadata)
+
+    #check the date format is YYYY-MM-DD, without this format the df merge will return empty
+    def validate_datetime(date_text):
+        """ Checks the date column of a csv file for the format YYYY-MM-DD, raise error if not found
+            Args: csv file containing a column tited 'data' """
+        date_list = date_text['date'].values.tolist()
+        for i, date in enumerate(date_list):
+                try:
+                    date == datetime.strptime(date, "%Y-%m-%d").strftime('%Y-%m-%d')
+                except ValueError:
+                    print("Incorrect data format, should be YYYY-MM-DD for row: " + str(i+1))
+    
+    validate_datetime(meta_df)
 
     #read, isolate .db files and retain path column, ie. first column
     db_files = pd.read_csv(index_file, header = None)
@@ -45,6 +57,7 @@ def link_meta_index(metadata, index_file, user_dir):
     for j in range(len(path_list)):
         full_path_list.append(user_dir + "\\" + path_list[j][0][0])
     
+    #create a unique id for each row, consists of first 25 char of file_name and region_id, inserted at index 0
     merge_df.insert(0, 'path', full_path_list)
     merge_df.insert(0, 'id', merge_df['file_name'].str.slice(0,26,1) + '|' + merge_df['region_id'].map('{:02d}'.format))
     

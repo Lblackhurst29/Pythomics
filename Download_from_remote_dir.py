@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 def download_from_remote_dir(meta, index, remote_dir, local_dir):
     """ Takes metadata csv file and cross references the ethoscope name and date/time with those in the index, matched ethoscope data will
-        be downloaded from the remote server and saved locally"""
+        be downloaded from the remote server and saved locally """
 
     def read_meta(path):
         """ check csv path is real and read to pandas df"""
@@ -52,7 +52,6 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
                     print("Incorrect data format, should be YYYY-MM-DD")
 
     validate_datetime(meta_df)
-
 
     # can add in a time criteria soon
     #if col_names.count('time') == 0:
