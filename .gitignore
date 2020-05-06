@@ -1,2 +1,6 @@
 notebook.ipynb
 notes.txt
+cached_data.pkl
+cached_metadata.pkl
+pickle_play.py
+play.py

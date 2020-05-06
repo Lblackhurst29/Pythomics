@@ -42,5 +42,6 @@ def list_all_rois(FILE):
     df = pd.read_sql_query('SELECT * FROM ROI_MAP', con, index_col = 'roi_idx')
     available_rois = np.array(df['roi_value'].values)
     print(available_rois)
+    return available_rois
 
 list_all_rois(db)

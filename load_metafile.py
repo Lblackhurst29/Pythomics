@@ -11,7 +11,7 @@ def read_meta(path):
             print("An error occurred: ", e)
 
     else:
-        print("Given file path is not readable")
+        print("File path is not readable")
 
     return meta_df
 

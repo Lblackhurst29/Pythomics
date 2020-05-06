@@ -7,7 +7,8 @@ results_dir = r"C:\Users\Loz\github\auto_generated_results"
 pd.options.display.max_colwidth = 200
 
 def list_of_files(path):
-
+    """ Find and apppend all .db files in the given directory and sub-directories
+        """
     files = []
     # r=root, d=directories, f = files
     for r, d, f in os.walk(path):
@@ -16,10 +17,3 @@ def list_of_files(path):
                 files.append(os.path.join(r, file))
 
     return files
-
-results = (list_of_files(results_dir))
-for f in results:
-    print(f)
-
-df_results = pd.DataFrame(results, columns = ['Path'])
-print(df_results)
