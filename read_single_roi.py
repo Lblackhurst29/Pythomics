@@ -3,6 +3,7 @@ import numpy as np
 import sqlite3
 import time
 import warnings
+import sys
 from experiment_metadata import experiment_metadata
 
 def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), reference_hour = None):

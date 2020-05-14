@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np 
+import os
 from load_metafile import read_meta
 from datetime import datetime
 
@@ -18,7 +19,7 @@ def link_meta_index(metadata, index_file, user_dir):
 
         return meta_df
 
-    meta_df = read_meta(meta)
+    meta_df = read_meta(metadata)
 
     #check the date format is YYYY-MM-DD, without this format the df merge will return empty
     def validate_datetime(date_text):

@@ -29,7 +29,7 @@ def load_ethoscope(metadata, min_time = 0 , max_time = float('inf'), reference_h
     metadata.set_index('id')
     data.set_index('id')
 
-    return metadata data
+    return metadata, data
 
 
 
