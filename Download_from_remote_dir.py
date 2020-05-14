@@ -106,7 +106,7 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
         ftp.quit()
         localfile.close()
 
-    # call grabFile function with remote_dir and local_dir "pre-filled"
+    # call grabFile function with remote_dir and local_dir 
     # iterate through nested list
     parse = urlparse(remote_dir)
     download = partial(grabFile, remote_dir=parse.netloc, local_dir=local_dir)
