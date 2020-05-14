@@ -6,7 +6,19 @@ from datetime import datetime
 def link_meta_index(metadata, index_file, user_dir):
     """ """
     #load metadata csv file
-    meta_df = read_meta(metadata)
+    def read_meta(path):
+        """ check csv path is real and read to pandas df"""
+        if os.access(path, os.R_OK):
+            try:
+                meta_df = pd.read_csv(path)         
+            except Exception as e:
+                print("An error occurred: ", e)
+        else:
+            print("File path is not readable")
+
+        return meta_df
+
+    meta_df = read_meta(meta)
 
     #check the date format is YYYY-MM-DD, without this format the df merge will return empty
     def validate_datetime(date_text):

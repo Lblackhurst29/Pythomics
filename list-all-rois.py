@@ -3,6 +3,7 @@ import pathlib
 import urllib.parse
 import pandas as pd
 import numpy as np 
+import time
 
 from sqlite3 import Error
 
@@ -30,7 +31,6 @@ def list_all_rois(FILE):
         
         try:
             conn = sqlite3.connect(path, uri = True)
-            print("Connection successful")
         
         except Error as e:
             print("An error occurred: ", e)  
@@ -38,10 +38,9 @@ def list_all_rois(FILE):
         return conn   
 
     con = create_connection(path)
+    con.row_factory = lambda cursor, row: row[0]
+    roi = con.execute('SELECT roi_value FROM ROI_MAP').fetchall()
 
-    df = pd.read_sql_query('SELECT * FROM ROI_MAP', con, index_col = 'roi_idx')
-    available_rois = np.array(df['roi_value'].values)
-    print(available_rois)
-    return available_rois
+    return roi
 
-list_all_rois(db)
+print(list_all_rois(db))

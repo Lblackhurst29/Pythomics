@@ -1,5 +1,7 @@
 import pandas as pd
 import time
+import datetime
+import sqlite3
 from load_database import path_to_uri
 from load_database import create_connection
 
@@ -10,9 +12,7 @@ def experiment_metadata(FILE):
         the given .db, parse date_time to GMT
 
         FILE = local location of database """
-    # create uri path and sqlite connection using functions from load_database, read to pd dataframe 
-    uri_path = path_to_uri(FILE) + '?mode=rw'
-    conn = create_connection(uri_path)
+    conn = sqlite3.connect(FILE)
     exp_meta = pd.read_sql_query('SELECT * FROM METADATA', conn)
     conn.close()
 
@@ -20,5 +20,3 @@ def experiment_metadata(FILE):
     exp_meta['value'].loc[exp_meta['field'] == 'date_time'] = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(float(exp_meta['value'].loc[exp_meta['field'] == 'date_time'])))
     
     return exp_meta
-
-print(experiment_metadata(path))
