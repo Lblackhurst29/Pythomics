@@ -6,7 +6,7 @@ import warnings
 import sys
 from experiment_metadata import experiment_metadata
 
-def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), reference_hour = None):
+def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), reference_hour = None, FUN = None):
     """  """
 
 
@@ -70,6 +70,10 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
         elif 'is_inferred' in data.columns:
             data = data[data['is_inferred'] == False]
             data = data.drop('is_inferred', 1)
+
+        if FUN != None:
+            data = FUN(data)
+        # add functionailty to check if function returns full dataset
     
         return data
 

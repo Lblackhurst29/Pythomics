@@ -1,6 +1,6 @@
-notebook.ipynb
-notes.txt
-cached_data.pkl
-cached_metadata.pkl
+*.ipynb
+*.txt
+*.pkl
 pickle_play.py
 play.py
+*/__pycache__/*
