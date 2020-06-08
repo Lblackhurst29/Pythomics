@@ -3,6 +3,7 @@ import numpy as np
 import os
 from load_metafile import read_meta
 from datetime import datetime
+import sys
 
 def link_meta_index(metadata, index_file, user_dir):
     """ """
@@ -22,17 +23,35 @@ def link_meta_index(metadata, index_file, user_dir):
     meta_df = read_meta(metadata)
 
     #check the date format is YYYY-MM-DD, without this format the df merge will return empty
-    def validate_datetime(date_text):
-        """ Checks the date column of a csv file for the format YYYY-MM-DD, raise error if not found
+    def validate_datetime(dataframe):
+        """ Checks the date column of a csv file for the format YYYY-MM-DD, corrects formats DD-MM-YYYY
+            and DD/MM/YYYY, raise error message for other formats
             Args: csv file containing a column tited 'data' """
-        date_list = date_text['date'].values.tolist()
+        date_list = dataframe['date'].values.tolist()
+        new_date_list = []
         for i, date in enumerate(date_list):
                 try:
-                    date == datetime.strptime(date, "%Y-%m-%d").strftime('%Y-%m-%d')
+                    date == datetime.strptime(date, '%Y-%m-%d').strftime('%Y-%m-%d')
                 except ValueError:
-                    print("Incorrect data format, should be YYYY-MM-DD for row: " + str(i+1))
+                    try:
+                        if date == datetime.strptime(date, '%d-%m-%Y').strftime('%d-%m-%Y'):
+                            date = datetime.strptime(date, '%d-%m-%Y').strftime('%Y-%m-%d')
+                            new_date_list.append(date)
+                    except ValueError:
+                        try:
+                            if date == datetime.strptime(date, '%d/%m/%Y').strftime('%d/%m/%Y'):
+                                date = datetime.strptime(date, '%d/%m/%Y').strftime('%Y-%m-%d')
+                                new_date_list.append(date)
+                        except ValueError:
+                            sys.exit("Incorrect data format, should be YYYY-MM-DD for row: " + str(i+1))
+        if len(new_date_list) == 0:
+            return dataframe
+        else:
+            dataframe['date'] = new_date_list   
+            return dataframe
+
     
-    validate_datetime(meta_df)
+    meta_df = validate_datetime(meta_df)
 
     #read, isolate .db files and retain path column, ie. first column
     db_files = pd.read_csv(index_file, header = None)

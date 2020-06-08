@@ -51,5 +51,4 @@ def sleep_annotation(data,
     
     return d_small
 
-    #d_small = data.merge(d_small, how = 'right', on = 't', copy = False).sort_values(by=['t'])
 
