@@ -43,8 +43,8 @@ def bout_analysis(data):
 
 #fil = bt[bt['asleep'] == True]
 
-def bout_hist(data, relative = True, bins = 30):
-    breaks = list(range(0, bins*60, 60))
+def bout_hist(data, relative = True, min_bins = 30):
+    breaks = list(range(0, min_bins*60, 60))
     bout_cut = pd.DataFrame(pd.cut(data.duration, breaks, right = False, labels = breaks[1:]))
     bout_gb = bout_cut.groupby('duration').agg(
     count = pd.NamedAgg(column='duration', aggfunc='count')
