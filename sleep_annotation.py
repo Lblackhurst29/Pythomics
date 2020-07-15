@@ -7,19 +7,19 @@ from rle import rle
 def sleep_annotation(data, 
                      time_window_length = 10,
                      min_time_immobile = 300,
-                     motion_detector_FUN = max_velocity_detector
+                     motion_detector_FUN = max_velocity_detector,
+                     masking_duration = 6
                      ):
     """ """
     #columns_to_keep = ['t', 'x', 'y', 'max_velocity', 'interactions',
                        #'beam_crosses', 'moving','asleep', 'is_interpolated']
     
-    if len(data.index) < 100 :
+    if len(data.index) < 100:
         return None
     
-    d_small = motion_detector_FUN(data, time_window_length)
+    d_small = motion_detector_FUN(data, time_window_length, masking_duration = masking_duration)
 
-
-    if len(d_small.index) < 100 :
+    if len(d_small.index) < 100:
         return None
 
     time_map = pd.Series(range(d_small.t.iloc[0], 
@@ -47,8 +47,7 @@ def sleep_annotation(data,
 
         return r_small
 
-    d_small['asleep'] = sleep_contiguous(d_small['moving'], 1/time_window_length)
+    d_small['asleep'] = sleep_contiguous(d_small['moving'], 1/time_window_length, min_valid_time = min_time_immobile)
     
     return d_small
-
 

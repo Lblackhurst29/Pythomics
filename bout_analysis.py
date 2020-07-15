@@ -4,11 +4,11 @@ import copy
 
 from rle import rle 
 
-#data = pd.read_pickle('bout_test.pkl')
 
 def bout_analysis(data):
     """ """
-    var_name = input('Enter name of variable: ')
+    var_name = 'asleep'
+    index_name = data.index[0]
 
     if var_name not in data.columns.tolist():
         print('variable name entered, {}, is not a column heading!'.format(var_name))
@@ -35,11 +35,11 @@ def bout_analysis(data):
     bout_times['t'] = time
     bout_times.reset_index(level=0, inplace=True)
     bout_times.drop(columns = ['bout_id'], inplace = True)
-    
+    old_index = pd.Index([index_name] * len(bout_times.index))
+    bout_times.set_index(old_index, inplace =True)
     
     return bout_times
 
-#bt = bout_analysis(data)
 
 #fil = bt[bt['asleep'] == True]
 
@@ -56,6 +56,7 @@ def bout_hist(data, relative = True, min_bins = 30):
     return bout_gb
 
 #bout_hist = bout_hist(fil)
+#print(bout_hist)
 
 #x_smooth = np.linspace(bout_hist['bins'].min(), bout_hist['bins'].max(), 200)
 #y_smooth = interp1d(bout_hist['bins'], bout_hist['prob'], x_smooth)

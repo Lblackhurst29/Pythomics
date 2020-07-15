@@ -1,23 +1,46 @@
 import pandas as pd
-import warnings 
+import numpy as np 
+from check_conform import check_conform
+from behavp_class import Behavpy
+
+#metadata = pd.DataFrame({'id' : ['A', 'B'],
+#                         'treatment' : ['w', 'z'],
+#                         'lifespan' : [19, 32],
+#                         'ref_x' : [1, 0]})
 
 
-class behavr:
+#data = pd.DataFrame({'id': np.repeat(['A', 'B'], [10, 26], axis = 0), 
+#                     't' : list(range(1, 11)) + list(range(5,31)),
+#                     'x' : np.random.normal(0, 1, 36)})
+
+data = pd.read_pickle('cached_data_test.pkl')
+metadata = pd.read_pickle('cached_metadata.pkl')
 
 
-def check_conform(data, metadata = None):
+def set_behavpy(metadata, data):
+    """ Takes two data frames, one metadata and the other the recorded values.
+        Both added as attributes of an empty class 'behavpy' for easier sorting filtering
+        must both contain an 'id' column with matching ids """
 
-    if  isinstance(data, pd.DataFrame) is not True:
-        warnings.warn('Data input is not a pandas dataframe')
-        exit()
+    check_conform(data, metadata)
 
-    # if metadata != None:
-        # check that data is a behavr table already
+    metadata.set_index('id', inplace = True)
 
-    if metadata is None:
-        warnings.warn('No metadata!')
-        exit()
+    if 'path' in metadata.columns:
+        metadata.drop('path', axis = 1, inplace = True)
+    if 'file_name' in metadata.columns:
+        metadata.drop('file_name', axis = 1, inplace = True)
+    
+    data.set_index('id', inplace = True)
 
-    if  isinstance(data, pd.DataFrame) is not True:
-        warnings.warn('Metadata input is not a pandas dataframe')
-        exit()
+    df = Behavpy(metadata, data)
+
+    return df
+
+if __name__ == '__main__':
+    df = set_behavpy(metadata, data)
+    df.xmv('camera', 'old')
+
+
+
+    

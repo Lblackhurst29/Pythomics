@@ -7,13 +7,14 @@ from math import floor
 def max_velocity_detector(data,
                           time_window_length,
                           velocity_correction_coef = 3e-3,
-                          masking_duration = 6
+                          masking_duration = 6,
+                          optional_columns = 'has_interacted'
                          ):
     """ """
     dt = prep_data_motion_detector(data,
                                    needed_columns = ['t', 'x', 'xy_dist_log10x1000'],
                                    time_window_length = time_window_length,
-                                   optional_columns = 'has_interacted')
+                                   optional_columns = optional_columns)
     
     dt['deltaT'] = dt.t.diff()
     dt['dist'] = 10 ** (dt.xy_dist_log10x1000 / 1000)

@@ -35,6 +35,7 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
         sql_query = 'SELECT * FROM ROI_{} WHERE t >= {} {}'.format(region_id, min_time, max_time_condtion)
         data = pd.read_sql_query(sql_query, conn)
         
+        
         if 'id' in data.columns:
             data = data.drop('id', 1)
 
@@ -71,10 +72,14 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
             data = data[data['is_inferred'] == False]
             data = data.drop('is_inferred', 1)
 
-        if FUN != None:
-            data = FUN(data)
+        if FUN is not None:
+            if 'has_interacted' not in data.columns:
+                data = FUN(data, masking_duration = 0)
+
+            else:
+                data = FUN(data)
+
         # add functionailty to check if function returns full dataset
-    
         return data
 
     finally:

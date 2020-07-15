@@ -2,8 +2,10 @@ import ftplib
 import os
 import pandas as pd 
 import numpy as np
+import sys
 
 from datetime import datetime
+from validate_datetime import validate_datetime
 from functools import partial
 from urllib.parse import urlparse
 
@@ -17,40 +19,22 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
     """ Takes metadata csv file and cross references the ethoscope name and date/time with those in the index, matched ethoscope data will
         be downloaded from the remote server and saved locally """
 
-    def read_meta(path):
-        """ check csv path is real and read to pandas df"""
-        if os.access(path, os.R_OK):
-            try:
-                meta_df = pd.read_csv(path)         
-            except Exception as e:
-                print("An error occurred: ", e)
-        else:
-            print("File path is not readable")
+    #check csv path is real and read to pandas df
+    if os.access(meta, os.R_OK):
+        try:
+            meta_df = pd.read_csv(meta)         
+        except Exception as e:
+            print("An error occurred: ", e)
+    else:
+        sys.exit("File path is not readable")
 
-        return meta_df
-
-    meta_df = read_meta(meta)
-    # tidy df, removing un-needed columns and duplicated machine names
+    # check and tidy df, removing un-needed columns and duplicated machine names
+    if 'machine_name' not in meta_df.columns and 'date' not in meta_df.columns:
+        sys.exit("Column(s) 'machine_name' and/or 'date' missing from metadata file")
     meta_df = meta_df[['machine_name', 'date']]
     meta_df.drop_duplicates(subset = ['machine_name'], keep = 'first', inplace = True, ignore_index = False)
 
-    # check the metadata csv has the required columns
-    col_names = list(meta_df.columns.values)
-    if col_names.count('machine_name') ==  0 or col_names.count('date') == 0:
-        print("Column(s) 'machine_name' and/or 'date' missing from metadata file")
-        exit()
-
     #check the date format is YYYY-MM-DD, without this format the df merge will return empty
-    def validate_datetime(date_text):
-        """ Checks the date column of a csv file for the format YYYY-MM-DD, raise error if not found
-            Args: csv file containing headed columns """
-        date_list = date_text['date'].values.tolist()
-        for date in date_list:
-                try:
-                    date == datetime.strptime(date, "%Y-%m-%d").strftime('%Y-%m-%d')
-                except ValueError:
-                    print("Incorrect data format, should be YYYY-MM-DD")
-
     validate_datetime(meta_df)
 
     # can add in a time criteria soon
