@@ -270,6 +270,7 @@ class Behavpy(pd.DataFrame):
         
         if reference_hour is None:
             self._data['phase'] = np.where(((self._data.t % 86400) > 43200), 'dark', 'light')
+            self._data['phase'] = self._data['phase'].astype('category')
 
     def motion_detector(self, time_window_length = 10, velocity_correction_coef = 3e-3, masking_duration = 0, optional_columns = None):
         """Method version of the motion detector without sleep annotation varaiables"""

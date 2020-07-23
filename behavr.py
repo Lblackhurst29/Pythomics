@@ -13,7 +13,7 @@ from behavp_class import Behavpy
 #                     't' : list(range(1, 11)) + list(range(5,31)),
 #                     'x' : np.random.normal(0, 1, 36)})
 
-data = pd.read_pickle('cached_data_test.pkl')
+data = pd.read_pickle('cached_data_2020-03-05_17-53-47.pkl')
 metadata = pd.read_pickle('cached_metadata.pkl')
 
 
@@ -39,8 +39,8 @@ def set_behavpy(metadata, data):
 
 if __name__ == '__main__':
     df = set_behavpy(metadata, data)
-    df.xmv('camera', 'old')
-
+    df = df.xmv('camera', 'old')
+    print(df)
 
 
     

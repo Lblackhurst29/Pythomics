@@ -63,9 +63,11 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
 
     #if index != None:
     index_df = split_index(index) 
+   
         
     # merge df's on the machine_name and date columns to find subset of .db
     merge_df = pd.merge(index_df, meta_df, on = ['machine_name', 'date'], right_index = True)
+
     # retain index for use later
     path_index = merge_df.index.tolist()
     index_files = pd.read_csv(index, header = None)
@@ -79,6 +81,7 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
 
     def grabFile(remote_dir, work_dir, local_dir, file_name):
         """ Connects to remote FTP server and saves to desginated local path, retains file name """
+
         ftp = ftplib.FTP(remote_dir)
         ftp.login()
         ftp.cwd(work_dir)
@@ -96,3 +99,5 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
     download = partial(grabFile, remote_dir=parse.netloc, local_dir=local_dir)
     for j in list_basenames:
         download(work_dir=parse.path+j[0], file_name=j[1])
+    
+    
