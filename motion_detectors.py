@@ -57,7 +57,7 @@ def max_velocity_detector(data,
 
 def prep_data_motion_detector(data,
                               needed_columns,
-                              time_window_length = 10, #for now
+                              time_window_length = 10,
                               optional_columns = None 
                               ):
     """ bin all points of time into windows of 'x' """

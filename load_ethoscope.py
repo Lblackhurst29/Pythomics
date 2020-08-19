@@ -36,22 +36,3 @@ def load_ethoscope(metadata, min_time = 0 , max_time = float('inf'), reference_h
         data.to_pickle(file_name)
 
     return data
-
-#metadata = pd.read_pickle('cached_metadata.pkl')
-#data = load_ethoscope(metadata, reference_hour=9.0, cache = False)
-#data.to_pickle('cached_data_2020-03-05_17-53-47_no_sleep.pkl')
-
-
-#print(metadata)
-#print(metadata['path'][23])
-#print(metadata['region_id'][23])
-#print(read_single_roi(FILE = metadata['path'][22],
-#                                region_id = metadata['region_id'][22],
- #                               min_time = 0,
- #                               max_time = float('inf'),
- #                               reference_hour = 9.0,
- #                               FUN = sleep_annotation
-#                                ))  
-
-
-    

@@ -14,7 +14,6 @@ def curate_dead_animals(data, moving_var = 'moving', time_window = 24, prop_immo
     local_means = np.array([d[d['t'].between(i, i + 86400)]['moving'].mean() for i in target_t])
 
     first_death_point = np.where((local_means < prop_immobile) | (local_means == prop_immobile), True, False)
-    first_death_point[42] = True
 
     if any(first_death_point) is False:
         return data

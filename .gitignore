@@ -7,3 +7,8 @@ play.py
 *venv
 *vscode
 _pycache_
+*.csv
+*.RDS
+f.py 
+fig.py 
+graph_play.py 

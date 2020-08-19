@@ -7,7 +7,7 @@ import numpy as np
 from sqlite3 import Error
 
 # Location of database **Test**
-# path = r"C:\Users\Loz\github\auto_generated_results\19139ed52d8840a6b04242428e6a1f23\ETHOSCOPE_191\2020-03-05_17-53-47\2020-03-05_17-53-47_19139ed52d8840a6b04242428e6a1f23.db"
+#path = r"C:\Users\lab\Documents\ethoscope_databases\auto_generated_data\ethoscope_results\sd_data.db"
 
 def path_to_uri(path):
     """ change path to URI compatability
@@ -19,7 +19,7 @@ def path_to_uri(path):
     return 'file:' + urllib.parse.quote(path.as_posix(), safe=':/')
 
 # Make path read/write only so a database won't be created in error
-# uri_path = path_to_uri(path) + '?mode=rw'
+uri_path = path_to_uri(path) + '?mode=rw'
 
 def create_connection(db_path, ethoscope = None, roi = None):
     """ create a database connection to a SQLite database """

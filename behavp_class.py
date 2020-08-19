@@ -1,16 +1,19 @@
 import pandas as pd
 import numpy as np 
 import warnings
+import pickle
 import copy
 from check_conform import check_conform
+from motion_detectors import max_velocity_detector
+from format_warnings import format_Warning
 
 class Behavpy(pd.DataFrame):
     """
+    Behavpy links a metadata and data table together by a common ID index.
+    Utilising this shared index values the data can be manipulated according to the metadata information.
+    To perform common pandas/numpy opperations on the tables they must be accessed through the .data() or .meta() methods.
+    Otherwise useful functions have been modified to methods, applying functions at an 'id' level.
     """
-
-    def format_Warning(message, category, filename, lineno, line=''):
-        return str(filename) + ':' + str(lineno) + ': ' + category.__name__ + ': ' +str(message) + '\n'
-    #formats warming method to not double print for user and allows string formatting
     warnings.formatwarning = format_Warning
 
     def __init__(self, metadata, data):
@@ -35,14 +38,17 @@ class Behavpy(pd.DataFrame):
             exit()
 
 
-        index_list = self._metadata[self._metadata[column] == metavariable].index.tolist()
+        index_list = self._metadata[self._metadata[column] == metavariable].index.values
+        # find interection of meta and data id incase metadata contains more id's than in data
+        data_id = list(set(self._data.index.values))
+        index_list = np.intersect1d(index_list, data_id)
 
         if inplace is True:
-            self._metadata = self._metadata.loc[index_list]
-            self._data = self._data.loc[index_list]
+            self._metadata = self._metadata[self._metadata.index.isin(index_list)]
+            self._data = self._data[self._data.index.isin(index_list)]
         
         else:
-            xmv_df = Behavpy(self._metadata.loc[index_list], self._data.loc[index_list])
+            xmv_df = Behavpy(self._metadata[self._metadata.index.isin(index_list)], self._data[self._data.index.isin(index_list)])
             
             return xmv_df
             
@@ -142,7 +148,8 @@ class Behavpy(pd.DataFrame):
                 bout_gb = bout_cut.groupby('duration').agg(
                 count = pd.NamedAgg(column = 'duration', aggfunc = 'count')
                 )
-                bout_gb['prob'] = bout_gb['count'] / bout_gb['count'].sum()
+                if relative is True:
+                    bout_gb['prob'] = bout_gb['count'] / bout_gb['count'].sum()
                 bout_gb.rename_axis('bins', inplace = True)
                 bout_gb.reset_index(level=0, inplace=True)
                 old_index = pd.Index([index_name] * len(bout_gb.index), name = 'id')
@@ -155,33 +162,45 @@ class Behavpy(pd.DataFrame):
 
         return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_bout_analysis))
 
-    def curate_dead_animals(self, moving_var = 'moving', time_window = 24, prop_immobile = 0.01, resolution = 24):
-        """ """
-        time_window = 3600 * time_window # converts hours to seconds
+    def curate_dead_animals(self, time_var = 't', moving_var = 'moving', time_window = 24, prop_immobile = 0.01, resolution = 24):
+        from math import floor
+        """ @param time_var column heading for the data frames time stamp column (default is 't')
+            @param moving_var logical variable in `data` used to define the moving (alive) state (default is `moving`)
+            @param time_window window during which to define death 
+            @param prop_immobile proportion of immobility that counts as "dead" during time_window 
+            @param resolution how much scanning windows overlap. Expressed as a factor. """
 
-        if moving_var not in self._data.columns:
-            warnings.warn('variable name entered "{}" is not a column heading!'.format(moving_var))
+        if time_var not in self._data.columns.tolist():
+            warnings.warn('Variable name entered, {}, is not a column heading!'.format(time_var))
+            exit()
+        
+        if moving_var not in self._data.columns.tolist():
+            warnings.warn('Variable name entered, {}, is not a column heading!'.format(moving_var))
             exit()
 
-        def wrapped_curate_dead_animals(data, moving_var = 'moving', time_window = time_window, prop_immobile = prop_immobile, resolution = resolution):
+        def wrapped_curate_dead_animals(data, 
+                                        time_var = time_var,
+                                        moving_var = moving_var,
+                                        time_window = time_window, 
+                                        prop_immobile = prop_immobile,
+                                        resolution = resolution): 
+            time_window = (60 * 60 * time_window)
 
-            d = self._data[['t', 'moving']]
-            target_t = np.array(list(range(d.t.min(), d.t.max(), int(time_window / resolution))))
+            d = data[[time_var, moving_var]]
+            target_t = np.array(list(range(d.t.min().astype(int), d.t.max().astype(int), floor(time_window / resolution))))
+            local_means = np.array([d[d['t'].between(i, i + 86400)]['moving'].mean() for i in target_t])
 
-            local_means = np.array([d[d['t'].between(i, i + time_window)]['moving'].mean() for i in target_t])
-
-            first_death_point = np.where((local_means < prop_immobile) | (local_means == prop_immobile), True, False)
+            first_death_point = np.where(local_means <= prop_immobile, True, False)
 
             if any(first_death_point) is False:
-                exit()
+                return data
 
             last_valid_point = target_t[first_death_point]
 
             curated_data = data[data['t'].between(data.t.min(), last_valid_point[0])]
+            return curated_data
 
-            return curated_data 
-
-        self._data = self._data.groupby(self._data.index, group_keys = False).apply(wrapped_curate_dead_animals)
+        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_curate_dead_animals))
 
     def bin_data(self, column, bin_column = 't', function = 'mean', bin_mins = 5):
         """ Bin data by time finding mean of input column per bin
@@ -302,11 +321,134 @@ class Behavpy(pd.DataFrame):
             return df                     
 
         return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_motion_detector))
-       
+
+    def sleep_annotation(self, time_window_length = 10, min_time_immobile = 300, motion_detector_FUN = max_velocity_detector, masking_duration = 0):
+        """Method version of the sleep annottaion function"""
+
+        def wrapped_sleep_annotation(data, 
+                                    time_window_length = time_window_length, 
+                                    min_time_immobile = min_time_immobile, 
+                                    motion_detector_FUN = motion_detector_FUN, 
+                                    masking_duration = masking_duration):
+            
+            from sleep_annotation import sleep_annotation
+            
+            index_name = data.index[0]
+            
+            df = sleep_annotation(data,                                   
+                                    time_window_length = time_window_length, 
+                                    min_time_immobile = min_time_immobile, 
+                                    motion_detector_FUN = motion_detector_FUN, 
+                                    masking_duration = masking_duration)
+
+            old_index = pd.Index([index_name] * len(df.index), name = 'id')
+            df.set_index(old_index, inplace =True)  
+
+            return df                     
+
+        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_sleep_annotation))
+
+    def wrap_time(self, wrap_time = 24, time_column = 't'):
+        """replaces linea values of time in column 't' with value in hours according to the days
+            default wrap time is 24 hours
+            default column is 't' unless specified by user """
+        hours_in_seconds = wrap_time * 60 * 60
+        self._data[time_column] = self._data[time_column].map(lambda t: t % hours_in_seconds)
+
+    def hmm_train(self, states, observables, trans_probs = None, emiss_probs = None, start_probs = None, mov_column = 'moving', iterations = 10, t_diff = 60, cache = False):
+        """Behavpy wrapper for hmmlearn package
+        prints trained start, transmisiion, emission probs as a printed table
+        returns a hmmlearn HMM Multinomial object
+        if cache = True a .pkl file is saved locally"""
+        from tabulate import tabulate
+        from hmmlearn import hmm
+        from math import floor
+
+        warnings.filterwarnings('ignore')
+
+        n_states = len(states)
+        n_obs = len(observables)
+
+        t_delta = self._data['t'].iloc[1] - self._data['t'].iloc[0]
+
+        if mov_column == 'beam_crosses':
+            self._data['active'] = np.where(self._data[mov_column] == 0, 0, 1)
+            gb = np.array(self._data.groupby('id')['active'].apply(list).tolist(), dtype = 'object')    
+
+        else:
+            # bin to 60 seconds unless t_diff is stated otherwise
+            if t_delta != t_diff:
+                self._data[mov_column] = np.where(self._data[mov_column] == True, 1, 0)
+                self._data['t'] = self._data['t'].map(lambda t: 60 * floor(t / 60))
+                bin_gb = self._data.groupby(['id','t']).agg(**{
+                    'moving' : ('moving', 'max')
+                })
+                bin_gb.reset_index(level = 1, inplace = True)
+                gb = np.array(bin_gb.groupby('id')[mov_column].apply(list).tolist(), dtype = 'object')
+
+            else:
+                self._data[mov_column] = np.where(self._data[mov_column] == True, 1, 0)
+                gb = np.array(self._data.groupby('id')[mov_column].apply(list).tolist(), dtype = 'object')
 
 
+        len_seq = []
+        for i in gb:
+            len_seq.append(len(i))
 
-              
+        seq = np.concatenate(gb, 0)
+        seq = seq.reshape(-1, 1)
+
+        init_params = ''
+
+        if start_probs is None:
+            init_params += 's'
+
+        if trans_probs is None:
+            init_params += 't'
+
+        if emiss_probs is None:
+            init_params += 'e'
+        
+        h = hmm.MultinomialHMM(n_components= n_states, n_iter = iterations, params = 'ste', init_params = init_params)
+
+        # set initial probability parameters
+        if start_probs is not None:
+            h.startprob_ = start_probs
+
+        if trans_probs is not None:
+            h.transmat_ = trans_probs
+
+        if emiss_probs is not None:
+            h.emissionprob_ = emiss_probs
+        
+        h.n_features = n_obs # number of emission states
+        
+        # call the fit function on the dataset input
+        h.fit(seq, len_seq)
+
+        # Boolean output of if the number of runs convererged on set appropriate probabilites for s, t, an e
+        print("Convergence: " + str(h.monitor_.converged) + "\n")
+
+        # print tables of trained emission probabilties, not accessible as objects for the user
+        df_s = pd.DataFrame(h.startprob_)
+        df_s = df_s.T
+        df_s.columns = states
+        print("Starting probabilty table: ")
+        print(tabulate(df_s, headers = 'keys', tablefmt = "github") + "\n")
+        print("Transition probabilty table: ")
+        df_t = pd.DataFrame(h.transmat_, index = states, columns = states)
+        print(tabulate(df_t, headers = 'keys', tablefmt = "github") + "\n")
+        print("Emission probabilty table: ")
+        df_e = pd.DataFrame(h.emissionprob_, index = states, columns = observables)
+        print(tabulate(df_e, headers = 'keys', tablefmt = "github") + "\n")
+
+        # if cache is true a .pkl file will be saved to the working directory with the date and time of the first entry in the metadata table
+        if cache is True:
+            file_name = 'hmm_{}_{}.pkl'.format(self._metadata['date'].iloc[0], self._metadata['time'].iloc[0])
+            with open(file_name, "wb") as file: pickle.dump(h, file)
+
+        return h
+
 
 
 

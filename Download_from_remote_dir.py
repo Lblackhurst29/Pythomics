@@ -1,23 +1,23 @@
 import ftplib
 import os
+import io
 import pandas as pd 
 import numpy as np
 import sys
+import errno
 
 from datetime import datetime
 from validate_datetime import validate_datetime
 from functools import partial
 from urllib.parse import urlparse
 
-# example locations
-# meta = r"C:\Users\Loz\github\Test_DB\2020-03-05_cameratest.csv"
-# index = r"C:\Users\Loz\github\auto_generated_results\index.txt"
-# local_direc = r"C:\Users\Loz\github"
-# remote_direc = 'ftp://nas.lab.gilest.ro/auto_generated_data/ethoscope_results/'
+from link_meta_index import link_meta_index
 
-def download_from_remote_dir(meta, index, remote_dir, local_dir):
+def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     """ Takes metadata csv file and cross references the ethoscope name and date/time with those in the index, matched ethoscope data will
         be downloaded from the remote server and saved locally """
+
+    metadata = link_meta_index(meta, remote_dir = remote_dir, user_dir = local_dir, index_file = index)
 
     #check csv path is real and read to pandas df
     if os.access(meta, os.R_OK):
@@ -44,8 +44,25 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
     def split_index(index_file):
         """ """
         #read, isolate .db files and retain path column, ie. first column
-        db_files = pd.read_csv(index_file, header = None)
-        db_files = db_files[db_files[0].str.endswith(".db")]
+        if index is None:
+            parse = urlparse(remote_dir)
+            ftp = ftplib.FTP(parse.netloc)
+            ftp.login()
+            ftp.cwd(parse.path)
+
+            download_file = io.BytesIO()
+            ftp.retrbinary('RETR ' + 'index.txt', download_file.write)
+            download_file.seek(0)
+            contents = download_file.read()
+            download_file.seek(0)
+            index_files = pd.read_csv(download_file, engine='python', header = None)
+                
+            ftp.quit()
+
+        else:
+            index_files = pd.read_csv(index_file, header = None)
+        
+        db_files = index_files[index_files[0].str.endswith(".db")]
         db_files = db_files.iloc[:,0]
         db_files_index = db_files.index.tolist()
 
@@ -59,10 +76,10 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
         split_db_files.drop(columns = ["date/time"], inplace = True)
         split_db_files['copy_index'] = db_files_index
         split_db_files.set_index('copy_index', inplace = True)
-        return split_db_files
+        return split_db_files, index_files
 
     #if index != None:
-    index_df = split_index(index) 
+    index_df, index_files = split_index(index) 
    
         
     # merge df's on the machine_name and date columns to find subset of .db
@@ -70,7 +87,6 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
 
     # retain index for use later
     path_index = merge_df.index.tolist()
-    index_files = pd.read_csv(index, header = None)
     index_files = index_files[index_files[0].str.endswith(".db")]
     paths = index_files.loc[path_index, 0].tolist()
 
@@ -79,15 +95,28 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
     list_basenames = list(map(basename, paths)); list_basenames
 
 
-    def grabFile(remote_dir, work_dir, local_dir, file_name):
+    def download_database(remote_dir, work_dir, local_dir, file_name):
         """ Connects to remote FTP server and saves to desginated local path, retains file name """
+
+        #create local copy of directory tree from ftp server
+        os.chdir(local_dir)
+        path = (local_dir + work_dir)
+
+        try:
+            os.makedirs(path)
+        except OSError as exc:
+            if exc.errno == errno.EEXIST and os.path.isdir(path):
+                pass
+            else:
+                raise
 
         ftp = ftplib.FTP(remote_dir)
         ftp.login()
         ftp.cwd(work_dir)
 
-        path = os.path.join(local_dir, file_name)
-        localfile = open(path, 'wb')
+        win_path = (local_dir + work_dir.replace('/', '\\'))
+        file_path = os.path.join(win_path, file_name)
+        localfile = open(file_path, 'wb')
         ftp.retrbinary('RETR ' + file_name, localfile.write)
             
         ftp.quit()
@@ -96,8 +125,10 @@ def download_from_remote_dir(meta, index, remote_dir, local_dir):
     # call grabFile function with remote_dir and local_dir 
     # iterate through nested list
     parse = urlparse(remote_dir)
-    download = partial(grabFile, remote_dir=parse.netloc, local_dir=local_dir)
+    download = partial(download_database, remote_dir=parse.netloc, local_dir=local_dir)
     for j in list_basenames:
         download(work_dir=parse.path+j[0], file_name=j[1])
+
+    return metadata
     
     

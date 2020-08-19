@@ -8,8 +8,6 @@ from experiment_metadata import experiment_metadata
 
 def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), reference_hour = None, FUN = None):
     """  """
-
-
     experiment_info = experiment_metadata(FILE)
 
     if min_time > max_time:
@@ -82,5 +80,5 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
         # add functionailty to check if function returns full dataset
         return data
 
-    finally:
+    finally: 
         conn.close()

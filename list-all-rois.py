@@ -8,7 +8,6 @@ import time
 from sqlite3 import Error
 
 # Location of database **Test**
-db = r"C:\Users\Loz\github\auto_generated_results\19139ed52d8840a6b04242428e6a1f23\ETHOSCOPE_191\2020-03-05_17-53-47\2020-03-05_17-53-47_19139ed52d8840a6b04242428e6a1f23.db"
 
 def list_all_rois(FILE):
     """ Returns the number of regions of interest from the queried database file
@@ -42,5 +41,3 @@ def list_all_rois(FILE):
     roi = con.execute('SELECT roi_value FROM ROI_MAP').fetchall()
 
     return roi
-
-print(list_all_rois(db))
