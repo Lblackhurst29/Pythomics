@@ -349,7 +349,7 @@ class Behavpy(pd.DataFrame):
         return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_sleep_annotation))
 
     def wrap_time(self, wrap_time = 24, time_column = 't'):
-        """replaces linea values of time in column 't' with value in hours according to the days
+        """replaces linear values of time in column 't' with value in hours according to the days
             default wrap time is 24 hours
             default column is 't' unless specified by user """
         hours_in_seconds = wrap_time * 60 * 60
