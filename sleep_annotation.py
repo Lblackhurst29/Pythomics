@@ -5,14 +5,14 @@ from rle import rle
 
 
 def sleep_annotation(data, 
-                     time_window_length = 10,
-                     min_time_immobile = 300,
-                     motion_detector_FUN = max_velocity_detector,
-                     masking_duration = 6
-                     ):
+                    time_window_length = 10,
+                    min_time_immobile = 300,
+                    motion_detector_FUN = max_velocity_detector,
+                    masking_duration = 6
+                    ):
     """ """
     #columns_to_keep = ['t', 'x', 'y', 'max_velocity', 'interactions',
-                       #'beam_crosses', 'moving','asleep', 'is_interpolated']
+    # 'beam_crosses', 'moving','asleep', 'is_interpolated']
     
     if len(data.index) < 100:
         return None
@@ -23,9 +23,9 @@ def sleep_annotation(data,
         return None
 
     time_map = pd.Series(range(d_small.t.iloc[0], 
-                           d_small.t.iloc[-1] + time_window_length, 
-                           time_window_length
-                           ), name = 't')
+                        d_small.t.iloc[-1] + time_window_length, 
+                        time_window_length
+                        ), name = 't')
 
     missing_values = time_map[~time_map.isin(d_small['t'].tolist())]
     d_small = d_small.merge(time_map, how = 'right', on = 't', copy = False).sort_values(by=['t'])

@@ -7,7 +7,7 @@ from validate_datetime import validate_datetime
 import sys
 from urllib.parse import urlparse
 
-def link_meta_index(metadata, remote_dir, user_dir, index_file = None):
+def link_meta_index(metadata, remote_dir, local_dir, index_file = None):
     """Takes a csv metadata file that must contain machine_name and data of experiment
         if index_file == None, the file will be retrieved from the remote directory location
         user directory is the local that the database files are saved following the same directory tree
@@ -44,14 +44,12 @@ def link_meta_index(metadata, remote_dir, user_dir, index_file = None):
     else:
         db_files = pd.read_csv(index_file, header = None)
     
-    db_files = db_files[0][db_files[0].str.endswith(".db")]
-    
+    db_paths = db_files[0][db_files[0].str.endswith(".db")]
 
     #split the series using '\', convert to a pd_df
-    split_db_files = db_files.str.split('/', expand = True)
+    split_db_files = db_paths.str.split('/', n = 3, expand = True)
     split_db_files.columns = ['machine_id', 'machine_name', 'date_time', 'file_name']
 
- 
     #split the date_time column and add back to df
     split_db_files[['date', 'time']] = split_db_files.date_time.str.split('_', expand = True)
     split_db_files.drop(columns = ["date_time"], inplace = True)
@@ -71,9 +69,12 @@ def link_meta_index(metadata, remote_dir, user_dir, index_file = None):
 
     #join the db path name with the users directory 
     full_path_list = []
+    parse = urlparse(remote_dir)
+    work_dir = parse.path
+    win_work_dir = work_dir.replace('/', '\\')
     for j in range(len(path_list)):
         win_path = path_list[j][0][0].replace('/', '\\')
-        full_path_list.append(user_dir + "\\" + win_path)
+        full_path_list.append(local_dir + '\\' + win_work_dir + '\\' + win_path)
     
     #create a unique id for each row, consists of first 25 char of file_name and region_id, inserted at index 0
     merge_df.insert(0, 'path', full_path_list)

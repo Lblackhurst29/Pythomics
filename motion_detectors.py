@@ -5,16 +5,16 @@ import copy
 from math import floor
 
 def max_velocity_detector(data,
-                          time_window_length,
-                          velocity_correction_coef = 3e-3,
-                          masking_duration = 6,
-                          optional_columns = 'has_interacted'
-                         ):
+                        time_window_length,
+                        velocity_correction_coef = 3e-3,
+                        masking_duration = 6,
+                        optional_columns = 'has_interacted'
+                        ):
     """ """
     dt = prep_data_motion_detector(data,
-                                   needed_columns = ['t', 'x', 'xy_dist_log10x1000'],
-                                   time_window_length = time_window_length,
-                                   optional_columns = optional_columns)
+                                needed_columns = ['t', 'x', 'xy_dist_log10x1000'],
+                                time_window_length = time_window_length,
+                                optional_columns = optional_columns)
     
     dt['deltaT'] = dt.t.diff()
     dt['dist'] = 10 ** (dt.xy_dist_log10x1000 / 1000)
@@ -56,10 +56,10 @@ def max_velocity_detector(data,
 
 
 def prep_data_motion_detector(data,
-                              needed_columns,
-                              time_window_length = 10,
-                              optional_columns = None 
-                              ):
+                            needed_columns,
+                            time_window_length = 10,
+                            optional_columns = None 
+                            ):
     """ bin all points of time into windows of 'x' """
     if all(elem in data.columns.values for elem in needed_columns) is not True:
         warnings.warn('data from ethoscope should have columns named {}!'.format(needed_columns))
@@ -79,9 +79,9 @@ def prep_data_motion_detector(data,
     dc['t_round'] = dc['t'].map(lambda t: time_window_length * floor(t / time_window_length)) 
     
     def curate_sparse_roi_data(data,
-                               window = 60,
-                               min_p = 20
-                               ):
+                            window = 60,
+                            min_p = 20
+                            ):
         """ Remove rows from table when there are not enough data points per 1 minute bin """
         data['t_w'] = data['t'].map(lambda t: 60 * floor(t / 60))
         data['n_points'] = data.groupby(['t_w'])['t_w'].transform('count')

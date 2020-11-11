@@ -51,7 +51,19 @@ class Behavpy(pd.DataFrame):
             xmv_df = Behavpy(self._metadata[self._metadata.index.isin(index_list)], self._data[self._data.index.isin(index_list)])
             
             return xmv_df
-            
+
+    def t_filter(self, end_time, start_time = 0, t_column = 't'):
+        """Filter data column by timestamp
+            time = hours"""
+        s_t = start_time * 60 * 60
+        e_t = end_time * 60 * 60
+
+        t_filter_df = Behavpy(self._metadata, self._data[(self._data[t_column] >= (s_t)) & (self._data[t_column] < (e_t))])
+
+        return t_filter_df
+
+
+        
     def meta(self):
         """return metadata dataframe"""
         
@@ -206,6 +218,8 @@ class Behavpy(pd.DataFrame):
         """ Bin data by time finding mean of input column per bin
             bin is entered as minutes """
 
+        from math import floor
+
         bin_secs = bin_mins * 60
 
         if column not in self._data.columns:
@@ -216,14 +230,16 @@ class Behavpy(pd.DataFrame):
 
             index_name = data.index[0]
 
-            breaks = list(range(data[bin_column].min(), data[bin_column].max() + bin_secs, bin_secs))
+            #breaks = list(range(data[bin_column].min(), data[bin_column].max() + bin_secs, bin_secs))
 
-            bout_cut = pd.DataFrame(pd.cut(data[bin_column], breaks, right = False, labels = breaks[:-1]))
-            data['bin'] = bout_cut
+            #bout_cut = pd.DataFrame(pd.cut(data[bin_column], breaks, right = False, labels = breaks[:-1]))
+            #data['bin'] = bout_cut
+
+            data[bin_column] = data[bin_column].map(lambda t: 60 * floor(t / 60))
 
             output_parse_name = '{}_{}'.format(column, function) # create new column name
         
-            bout_gb = data.groupby('bin').agg(**{
+            bout_gb = data.groupby(bin_column).agg(**{
                 output_parse_name : (column, function)    
             })
 
@@ -355,7 +371,7 @@ class Behavpy(pd.DataFrame):
         hours_in_seconds = wrap_time * 60 * 60
         self._data[time_column] = self._data[time_column].map(lambda t: t % hours_in_seconds)
 
-    def hmm_train(self, states, observables, trans_probs = None, emiss_probs = None, start_probs = None, mov_column = 'moving', iterations = 10, t_diff = 60, cache = False):
+    def hmm_train(self, states, observables, trans_probs = None, emiss_probs = None, start_probs = None, mov_column = 'moving', iterations = 10, t_column = 't', t_diff = 60, cache = False):
         """Behavpy wrapper for hmmlearn package
         prints trained start, transmisiion, emission probs as a printed table
         returns a hmmlearn HMM Multinomial object

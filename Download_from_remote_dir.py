@@ -11,13 +11,9 @@ from validate_datetime import validate_datetime
 from functools import partial
 from urllib.parse import urlparse
 
-from link_meta_index import link_meta_index
-
 def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     """ Takes metadata csv file and cross references the ethoscope name and date/time with those in the index, matched ethoscope data will
         be downloaded from the remote server and saved locally """
-
-    metadata = link_meta_index(meta, remote_dir = remote_dir, user_dir = local_dir, index_file = index)
 
     #check csv path is real and read to pandas df
     if os.access(meta, os.R_OK):
@@ -29,12 +25,13 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
         sys.exit("File path is not readable")
 
     # check and tidy df, removing un-needed columns and duplicated machine names
-    if 'machine_name' not in meta_df.columns and 'date' not in meta_df.columns:
+    if 'machine_name' not in meta_df.columns or 'date' not in meta_df.columns:
         sys.exit("Column(s) 'machine_name' and/or 'date' missing from metadata file")
     meta_df = meta_df[['machine_name', 'date']]
     meta_df.drop_duplicates(subset = ['machine_name'], keep = 'first', inplace = True, ignore_index = False)
 
-    #check the date format is YYYY-MM-DD, without this format the df merge will return empty
+    # check the date format is YYYY-MM-DD, without this format the df merge will return empty
+    # will correct to YYYY-MM-DD in a select few cases
     validate_datetime(meta_df)
 
     # can add in a time criteria soon
@@ -42,7 +39,8 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
         #meta_df['time'] = np.nan
 
     def split_index(index_file):
-        """ """
+        """if index_file = None it will search the remote directory for a index.txt file to read
+        The paths in the index file are split into their contituents and date_time seperated"""
         #read, isolate .db files and retain path column, ie. first column
         if index is None:
             parse = urlparse(remote_dir)
@@ -62,26 +60,19 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
         else:
             index_files = pd.read_csv(index_file, header = None)
         
-        db_files = index_files[index_files[0].str.endswith(".db")]
-        db_files = db_files.iloc[:,0]
-        db_files_index = db_files.index.tolist()
+        db_files = index_files[0][index_files[0].str.endswith(".db")]
 
         #split the series using '\', convert to a pd_df
-        split_db_files = pd.DataFrame(db_files.str.split("/").tolist(), columns = ["machine_id", "machine_name","date/time","file_name"])
-        #split the date_time column and add back to df
-        date_time = split_db_files[["date/time"]]
-        date_time = date_time["date/time"].str.split("_", expand = True)
-        split_db_files["date"] = date_time[0]
-        split_db_files["time"] = date_time[1]
-        split_db_files.drop(columns = ["date/time"], inplace = True)
-        split_db_files['copy_index'] = db_files_index
-        split_db_files.set_index('copy_index', inplace = True)
+        split_db_files = db_files.str.split('/', n = 3, expand = True)
+        split_db_files.columns = ['machine_id', 'machine_name', 'date_time', 'file_name']
+        
+        #split the date_time column
+        split_db_files[['date', 'time']] = split_db_files.date_time.str.split('_', expand = True)
+        split_db_files.drop(columns = ["date_time"], inplace = True)
         return split_db_files, index_files
 
-    #if index != None:
     index_df, index_files = split_index(index) 
-   
-        
+
     # merge df's on the machine_name and date columns to find subset of .db
     merge_df = pd.merge(index_df, meta_df, on = ['machine_name', 'date'], right_index = True)
 
@@ -96,12 +87,11 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
 
     def download_database(remote_dir, work_dir, local_dir, file_name):
-        """ Connects to remote FTP server and saves to desginated local path, retains file name """
-
+        """ Connects to remote FTP server and saves to designated local path, retains file name """
+        
         #create local copy of directory tree from ftp server
         os.chdir(local_dir)
         path = (local_dir + work_dir)
-
         try:
             os.makedirs(path)
         except OSError as exc:
@@ -128,7 +118,5 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     download = partial(download_database, remote_dir=parse.netloc, local_dir=local_dir)
     for j in list_basenames:
         download(work_dir=parse.path+j[0], file_name=j[1])
-
-    return metadata
     
     

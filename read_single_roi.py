@@ -4,23 +4,34 @@ import sqlite3
 import time
 import warnings
 import sys
+import os.path
 from experiment_metadata import experiment_metadata
+pd.options.mode.chained_assignment = None 
 
-def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), reference_hour = None, FUN = None):
-    """  """
-    experiment_info = experiment_metadata(FILE)
+def read_single_roi(file, min_time = 0, max_time = float('inf'), reference_hour = None, cache = None):
+    """Loads the data from a single region from an ethoscope according to inputted times
+    changes time to reference hour and applies any functions added"""
+
+    experiment_info = experiment_metadata(file['path'])
 
     if min_time > max_time:
         sys.exit('Error: min_time is larger than max_time')
 
+    if cache is not None:
+        cache_name = 'cached_{}_{}_{}.pkl'.format(file['machine_id'], file['region_id'], file['date'])
+        path = cache + '\\' + cache_name
+        if os.path.exists(path) is True:
+            data = pd.read_pickle(path)
+            return data
+
     try:
-        conn = sqlite3.connect(FILE)
+        conn = sqlite3.connect(file['path'])
         roi_df = pd.read_sql_query('SELECT * FROM ROI_MAP', conn)
-        roi_row = roi_df[roi_df['roi_idx'] == region_id]
+        roi_row = roi_df[roi_df['roi_idx'] == file['region_id']]
         var_df = pd.read_sql_query('SELECT * FROM VAR_MAP', conn)
         
         if len(roi_row.index) == 0:
-            warnings.warn('ROI {} does not exist, skipping'.format(region_id))
+            warnings.warn('ROI {} does not exist, skipping'.format(file['region_id']))
             return None
 
         if max_time == float('inf'):
@@ -30,9 +41,8 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
         
         min_time = min_time * 1000
 
-        sql_query = 'SELECT * FROM ROI_{} WHERE t >= {} {}'.format(region_id, min_time, max_time_condtion)
-        data = pd.read_sql_query(sql_query, conn)
-        
+        sql_query = 'SELECT * FROM ROI_{} WHERE t >= {} {}'.format(file['region_id'], min_time, max_time_condtion)
+        data = pd.read_sql_query(sql_query, conn)          
         
         if 'id' in data.columns:
             data = data.drop('id', 1)
@@ -70,15 +80,12 @@ def read_single_roi(FILE, region_id, min_time = 0, max_time = float('inf'), refe
             data = data[data['is_inferred'] == False]
             data = data.drop('is_inferred', 1)
 
-        if FUN is not None:
-            if 'has_interacted' not in data.columns:
-                data = FUN(data, masking_duration = 0)
+        if cache is not None:
+            data.to_pickle(path)
 
-            else:
-                data = FUN(data)
-
-        # add functionailty to check if function returns full dataset
         return data
 
     finally: 
         conn.close()
+
+

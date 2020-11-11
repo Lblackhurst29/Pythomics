@@ -2,37 +2,36 @@ import pandas as pd
 import numpy as np 
 import os.path
 from read_single_roi import read_single_roi
-from sleep_annotation import sleep_annotation
 
-def load_ethoscope(metadata, min_time = 0 , max_time = float('inf'), reference_hour = None, cache =  False, FUN = None):
+pd.options.mode.chained_assignment = None
+
+def load_ethoscope(metadata, min_time = 0 , max_time = float('inf'), reference_hour = None, cache = None, FUN = None):
     """metadata = metadata df returned from link_meta_index function"""  
-    if cache is True:
-        file_name = 'cached_data_{}_{}.pkl'.format(metadata['date'].iloc[0], metadata['time'].iloc[0])
-        if os.path.exists(file_name) is True:
-            data = pd.read_pickle(file_name)
-            return data
 
     data = pd.DataFrame()
 
     # iterate over the ROI of each ethoscope in the metadata df
     for i in range(len(metadata.index)):
         print('Loading ROI_{} from {}'.format(metadata['region_id'][i], metadata['machine_name'][i]))
-        roi_1 = read_single_roi(FILE = metadata['path'][i],
-                                region_id = metadata['region_id'][i],
+        roi_1 = read_single_roi(file = metadata.iloc[i,:],
                                 min_time = min_time,
                                 max_time = max_time,
                                 reference_hour = reference_hour,
-                                FUN = FUN
+                                cache = cache
                                 )
 
         if roi_1 is None:
             print('ROI_{} from {} was unable to load'.format(metadata['region_id'][i], metadata['machine_name'][i]))
-            continue      
+            continue
+
+        if FUN is not None:
+            if 'has_interacted' not in roi_1.columns:
+                roi_1 = FUN(roi_1, masking_duration = 0)
+
+            else:
+                roi_1 = FUN(roi_1)    
+
         roi_1.insert(0, 'id', metadata['id'][i]) 
         data = data.append(roi_1, ignore_index= True)
-
-    if cache is True:
-        file_name = 'cached_data_{}_{}.pkl'.format(metadata['date'].iloc[0], metadata['time'].iloc[0])
-        data.to_pickle(file_name)
 
     return data
