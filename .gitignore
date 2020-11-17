@@ -4,6 +4,7 @@
 pickle_play.py
 play.py
 */__pycache__/*
+*pyc
 *venv
 *vscode
 _pycache_

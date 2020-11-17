@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import sys
 import errno
+import time 
 
 from datetime import datetime
 from validate_datetime import validate_datetime
@@ -59,12 +60,11 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
         else:
             index_files = pd.read_csv(index_file, header = None)
-        
-        db_files = index_files[0][index_files[0].str.endswith(".db")]
 
         #split the series using '\', convert to a pd_df
-        split_db_files = db_files.str.split('/', n = 3, expand = True)
+        split_db_files = index_files[0].str.split('/', n = 3, expand = True)
         split_db_files.columns = ['machine_id', 'machine_name', 'date_time', 'file_name']
+        split_db_files['file_size'] = index_files[1]
         
         #split the date_time column
         split_db_files[['date', 'time']] = split_db_files.date_time.str.split('_', expand = True)
@@ -78,15 +78,9 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
     # retain index for use later
     path_index = merge_df.index.tolist()
-    index_files = index_files[index_files[0].str.endswith(".db")]
-    paths = index_files.loc[path_index, 0].tolist()
+    paths = np.array(index_files.loc[path_index, :].apply(list), dtype = 'object')
 
-    # split path into path and file name
-    basename = lambda x: os.path.split(x)
-    list_basenames = list(map(basename, paths)); list_basenames
-
-
-    def download_database(remote_dir, work_dir, local_dir, file_name):
+    def download_database(remote_dir, work_dir, local_dir, file_name, file_size):
         """ Connects to remote FTP server and saves to designated local path, retains file name """
         
         #create local copy of directory tree from ftp server
@@ -100,23 +94,56 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
             else:
                 raise
 
-        ftp = ftplib.FTP(remote_dir)
-        ftp.login()
-        ftp.cwd(work_dir)
-
         win_path = (local_dir + work_dir.replace('/', '\\'))
         file_path = os.path.join(win_path, file_name)
-        localfile = open(file_path, 'wb')
-        ftp.retrbinary('RETR ' + file_name, localfile.write)
-            
-        ftp.quit()
-        localfile.close()
+
+        if os.access(file_path, os.R_OK):
+            if os.path.getsize(file_path) < file_size:
+                ftp = ftplib.FTP(remote_dir)
+                ftp.login()
+                ftp.cwd(work_dir)
+
+                localfile = open(file_path, 'wb')
+                ftp.retrbinary('RETR ' + file_name, localfile.write)
+                    
+                ftp.quit()
+                localfile.close()
+
+        else:
+            ftp = ftplib.FTP(remote_dir)
+            ftp.login()
+            ftp.cwd(work_dir)
+
+            localfile = open(file_path, 'wb')
+            ftp.retrbinary('RETR ' + file_name, localfile.write)
+                
+            ftp.quit()
+            localfile.close()
 
     # call grabFile function with remote_dir and local_dir 
     # iterate through nested list
     parse = urlparse(remote_dir)
     download = partial(download_database, remote_dir=parse.netloc, local_dir=local_dir)
-    for j in list_basenames:
-        download(work_dir=parse.path+j[0], file_name=j[1])
-    
-    
+    counter = 1
+    times = np.array([])
+
+    for j in paths:
+        print('Downloading {}... {}/{}'.format(j[0].split('/')[1], counter, len(merge_df)))
+        if counter == 1:
+            start = time.time()
+            p = os.path.split(j[0])
+            download(work_dir = parse.path+p[0], file_name = p[1], file_size = j[1])
+            stop = time.time()
+            t = stop - start
+            times = np.append(times, t)
+            counter += 1
+        else:
+            av_time = round((times.mean()/60) * len(merge_df))
+            print('Estimated finish time: {} mins'.format(av_time)) 
+            start = time.time()
+            p = os.path.split(j[0])
+            download(work_dir=parse.path+p[0], file_name=p[1], file_size = j[1])
+            stop = time.time()
+            t = stop - start
+            times = np.append(times, t)
+            counter += 1

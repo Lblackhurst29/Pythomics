@@ -30,7 +30,6 @@ def load_ethoscope(metadata, min_time = 0 , max_time = float('inf'), reference_h
 
             else:
                 roi_1 = FUN(roi_1)    
-
         roi_1.insert(0, 'id', metadata['id'][i]) 
         data = data.append(roi_1, ignore_index= True)
 
