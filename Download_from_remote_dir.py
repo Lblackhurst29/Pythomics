@@ -125,7 +125,7 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     parse = urlparse(remote_dir)
     download = partial(download_database, remote_dir=parse.netloc, local_dir=local_dir)
     counter = 1
-    times = np.array([])
+    times = []
 
     for j in paths:
         print('Downloading {}... {}/{}'.format(j[0].split('/')[1], counter, len(merge_df)))
@@ -135,15 +135,15 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
             download(work_dir = parse.path+p[0], file_name = p[1], file_size = j[1])
             stop = time.time()
             t = stop - start
-            times = np.append(times, t)
+            times.append(t)
             counter += 1
         else:
-            av_time = round((times.mean()/60) * len(merge_df))
+            av_time = round((np.mean(times)/60) * len(merge_df))
             print('Estimated finish time: {} mins'.format(av_time)) 
             start = time.time()
             p = os.path.split(j[0])
             download(work_dir=parse.path+p[0], file_name=p[1], file_size = j[1])
             stop = time.time()
             t = stop - start
-            times = np.append(times, t)
+            times.append(t)
             counter += 1
