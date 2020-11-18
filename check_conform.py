@@ -18,18 +18,10 @@ def check_conform(data, metadata = None):
             warnings.warn('Metadata input is not a pandas dataframe')
             exit()
 
-        #if 'id' not in metadata.columns:
-            #warnings.warn('No "id" column in metadata, please check dataframes structure')
-            #exit()
-
         metadata_id_list = metadata.index.tolist()
         data_id_list = set(data.index.tolist())
         # checks if all id's of data are in the metadata dataframe
         check_data = all(elem in metadata_id_list for elem in data_id_list)
         if check_data is not True:
             warnings.warn("There are ID's in the data not in the metadata, please check")
-            exit()         
-
-    #if 'id' not in data.columns: 
-        #warnings.warn('No "id" column in data, please check dataframes structure')
-        #exit()
+            exit()

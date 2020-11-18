@@ -7,50 +7,52 @@ from check_conform import check_conform
 from motion_detectors import max_velocity_detector
 from format_warnings import format_Warning
 
-class Behavpy(pd.DataFrame):
+class behavpy(pd.DataFrame):
     """
-    Behavpy links a metadata and data table together by a common ID index.
+    behavpy sets a metadata dataframe to a Pandas dataframe
+    Both dataframes should have an index column called 'id' that are shared
     Utilising this shared index values the data can be manipulated according to the metadata information.
-    To perform common pandas/numpy opperations on the tables they must be accessed through the .data() or .meta() methods.
-    Otherwise useful functions have been modified to methods, applying functions at an 'id' level.
+    The metadata is set as an attribute and can only be manipulated by df.meta
+    The dataframe has all the tools of pandas whilst retaining the addtional methods of behavpy.
+    Issues with groupby and a few other special cases that won't return a behavpy class
+    print(df) will only print the data df, to see both use the .display() method
+
     """
     warnings.formatwarning = format_Warning
 
-    def __init__(self, metadata, data):
-        self._metadata = metadata
-        self._data = data
+    # set meta as permenant attribute
+    _metadata = ['meta']
 
-    def __repr__(self):
-        return '\n ==== METADATA ====\n\n{}\n ====== DATA ======\n\n{}'.format(self._metadata, self._data)
-         
+    @property
+    def _constructor(self):
+        return behavpy
 
-    def xmv(self, column, metavariable, inplace = False):
+    def display(self):
+        print('\n ==== METADATA ====\n\n{}\n ====== DATA ======\n\n{}'.format(self.meta, self))
+
+    def xmv(self, column, metavariable):
         """Expand metavariable from the behavpy object
-        returns a pandas dataframe matched to the entered metavariable"""
+        returns a behavpy dataframe matched to the entered metavariable"""
 
-        if column not in self._metadata.columns:
+        if column not in self.meta.columns:
             warnings.warn('Column heading "{}" is not in the metadata table'.format(column))
             exit()
-
         
-        if metavariable not in self._metadata[column].tolist():
+        if metavariable not in self.meta[column].tolist():
             warnings.warn('Metavariablle "{}" is not in the column'.format(metavariable))
             exit()
 
 
-        index_list = self._metadata[self._metadata[column] == metavariable].index.values
-        # find interection of meta and data id incase metadata contains more id's than in data
-        data_id = list(set(self._data.index.values))
-        index_list = np.intersect1d(index_list, data_id)
+        index_list = self.meta[self.meta[column] == metavariable].index.values
 
-        if inplace is True:
-            self._metadata = self._metadata[self._metadata.index.isin(index_list)]
-            self._data = self._data[self._data.index.isin(index_list)]
-        
-        else:
-            xmv_df = Behavpy(self._metadata[self._metadata.index.isin(index_list)], self._data[self._data.index.isin(index_list)])
-            
-            return xmv_df
+        # find interection of meta and data id incase metadata contains more id's than in data
+        data_id = list(set(self.index.values))
+        new_index_list = np.intersect1d(index_list, data_id)
+
+        xmv_df = behavpy(self[self.index.isin(index_list)])
+        xmv_df.meta = self.meta[self.meta.index.isin(new_index_list)]
+
+        return xmv_df
 
     def t_filter(self, end_time, start_time = 0, t_column = 't'):
         """Filter data column by timestamp
@@ -58,33 +60,21 @@ class Behavpy(pd.DataFrame):
         s_t = start_time * 60 * 60
         e_t = end_time * 60 * 60
 
-        t_filter_df = Behavpy(self._metadata, self._data[(self._data[t_column] >= (s_t)) & (self._data[t_column] < (e_t))])
+        t_filter_df = self[(self[t_column] >= (s_t)) & (self[t_column] < (e_t))]
 
         return t_filter_df
 
-
-        
-    def meta(self):
-        """return metadata dataframe"""
-        
-        return self._metadata
-
-    def data(self):
-        """return data dataframe"""
-        
-        return self._data
-
     def rejoin(self, new_column, inplace = False):
-        """joins the data of a Behavpy table to its own metadata"""
+        """joins the data of a behavpy table to its own metadata"""
 
         check_conform(new_column)
 
         if inplace is True:
-            self._metadata = self._metadata.join(new_column, on = 'id')
+            self.meta = self.meta.join(new_column, on = 'id')
 
 
         else:
-            rejoin_df = Behavpy(self._metadata.join(new_column, on = 'id'), self._data)
+            rejoin_df = behavpy(self.meta.join(new_column, on = 'id'), self)
     
             return rejoin_df
 
@@ -94,15 +84,15 @@ class Behavpy(pd.DataFrame):
             takes a column input to perform a function on
             functin can be standard "mean", "max".... ect
             can also be a user defined function
-            returns a new dataframe """
+            returns a new dataframe not a behavpy dataframe """
 
-        if group not in self._data.columns:
+        if group not in self.columns:
             warnings.warn('Column heading "{}", is not in the data table'.format(group))
             exit()
             
         parse_name = '{}_{}'.format(group, function) # create new column name
         
-        pivot = self._data.groupby(self._data.index).agg(**{
+        pivot = self.groupby(self.index).agg(**{
             parse_name : (group, function)    
         })
 
@@ -110,13 +100,12 @@ class Behavpy(pd.DataFrame):
 
     def sleep_bout_analysis(self, sleep_var = 'asleep', as_hist = False, relative = True, min_bins = 30, asleep = True):
         """ takes a column with boolean values that represents sleep
-            returns a Behavpy pandas DataFrame object with duration and t start
-            of each boolean sequence 
+            returns a behavpy DataFrame object with duration and t start of each boolean sequence 
             arguments relative and min_bins only used if as_hist = True"""
 
         from rle import rle
 
-        if sleep_var not in self._data.columns:
+        if sleep_var not in self.columns:
             warnings.warn('Column heading "{}", is not in the data table'.format(sleep_var))
             exit()
 
@@ -172,7 +161,10 @@ class Behavpy(pd.DataFrame):
             else:
                 return bout_times
 
-        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_bout_analysis))
+        bout_df = behavpy(self.groupby('id', group_keys = False).apply(wrapped_bout_analysis))
+        bout_df.meta = self.meta
+
+        return bout_df
 
     def curate_dead_animals(self, time_var = 't', moving_var = 'moving', time_window = 24, prop_immobile = 0.01, resolution = 24):
         from math import floor
@@ -182,11 +174,11 @@ class Behavpy(pd.DataFrame):
             @param prop_immobile proportion of immobility that counts as "dead" during time_window 
             @param resolution how much scanning windows overlap. Expressed as a factor. """
 
-        if time_var not in self._data.columns.tolist():
+        if time_var not in self.columns.tolist():
             warnings.warn('Variable name entered, {}, is not a column heading!'.format(time_var))
             exit()
         
-        if moving_var not in self._data.columns.tolist():
+        if moving_var not in self.columns.tolist():
             warnings.warn('Variable name entered, {}, is not a column heading!'.format(moving_var))
             exit()
 
@@ -200,7 +192,7 @@ class Behavpy(pd.DataFrame):
 
             d = data[[time_var, moving_var]]
             target_t = np.array(list(range(d.t.min().astype(int), d.t.max().astype(int), floor(time_window / resolution))))
-            local_means = np.array([d[d['t'].between(i, i + 86400)]['moving'].mean() for i in target_t])
+            local_means = np.array([d[d['t'].between(i, i + time_window)]['moving'].mean() for i in target_t])
 
             first_death_point = np.where(local_means <= prop_immobile, True, False)
 
@@ -212,9 +204,12 @@ class Behavpy(pd.DataFrame):
             curated_data = data[data['t'].between(data.t.min(), last_valid_point[0])]
             return curated_data
 
-        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_curate_dead_animals))
+        curated_df = behavpy(self.groupby('id', group_keys = False).apply(wrapped_curate_dead_animals))
+        curated_df.meta = self.meta 
 
-    def bin_data(self, column, bin_column = 't', function = 'mean', bin_mins = 5):
+        return curated_df
+
+    def bin_time(self, column, bin_mins, bin_column = 't', function = 'mean'):
         """ Bin data by time finding mean of input column per bin
             bin is entered as minutes """
 
@@ -222,7 +217,7 @@ class Behavpy(pd.DataFrame):
 
         bin_secs = bin_mins * 60
 
-        if column not in self._data.columns:
+        if column not in self.columns:
             warnings.warn('Column heading "{}", is not in the data table'.format(column))
             exit()
 
@@ -230,12 +225,7 @@ class Behavpy(pd.DataFrame):
 
             index_name = data.index[0]
 
-            #breaks = list(range(data[bin_column].min(), data[bin_column].max() + bin_secs, bin_secs))
-
-            #bout_cut = pd.DataFrame(pd.cut(data[bin_column], breaks, right = False, labels = breaks[:-1]))
-            #data['bin'] = bout_cut
-
-            data[bin_column] = data[bin_column].map(lambda t: 60 * floor(t / 60))
+            data[bin_column] = data[bin_column].map(lambda t: bin_secs * floor(t / bin_secs))
 
             output_parse_name = '{}_{}'.format(column, function) # create new column name
         
@@ -251,8 +241,11 @@ class Behavpy(pd.DataFrame):
             bout_gb.set_index(old_index, inplace =True)
 
             return bout_gb
-            
-        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_bin_data))
+
+        bin_df = behavpy(self.groupby('id', group_keys = False).apply(wrapped_bin_data))
+        bin_df.meta = self.meta
+
+        return bin_df
 
     def summary(self, detailed = False):
         """ Provides summary statistics of metadata and data counts
@@ -268,10 +261,10 @@ class Behavpy(pd.DataFrame):
                 print(row_format.format(*row))
 
         if detailed is False:
-            individuals = len(self._metadata.index)
-            metavariable = len(self._metadata.columns)
-            variables = len(self._data.columns)
-            measurements = len(self._data.index)
+            individuals = len(self.meta.index)
+            metavariable = len(self.meta.columns)
+            variables = len(self.columns)
+            measurements = len(self.index)
             table = [
                 ['individuals', individuals],
                 ['metavariable', metavariable],
@@ -287,7 +280,7 @@ class Behavpy(pd.DataFrame):
                 return (str(min(data)) + '  ->  ' + str(max(data)))
 
 
-            group = self._data.groupby('id').agg(
+            group = self.groupby('id').agg(
                 data_points = pd.NamedAgg(column = 't', aggfunc = 'count'),
                 time_range = pd.NamedAgg(column = 't', aggfunc = time_range)
             )
@@ -301,17 +294,17 @@ class Behavpy(pd.DataFrame):
 
         from math import floor
 
-        self._data['day'] = self._data['t'].map(lambda t: floor(t / 86400))
+        self['day'] = self['t'].map(lambda t: floor(t / 86400))
         
         if reference_hour is None:
-            self._data['phase'] = np.where(((self._data.t % 86400) > 43200), 'dark', 'light')
-            self._data['phase'] = self._data['phase'].astype('category')
+            self['phase'] = np.where(((self.t % 86400) > 43200), 'dark', 'light')
+            self['phase'] = self['phase'].astype('category')
 
     def motion_detector(self, time_window_length = 10, velocity_correction_coef = 3e-3, masking_duration = 0, optional_columns = None):
         """Method version of the motion detector without sleep annotation varaiables"""
 
         if optional_columns is not None:
-            if optional_columns not in self._data.columns:
+            if optional_columns not in self.columns:
                 warnings.warn('Column heading "{}", is not in the data table'.format(optional_columns))
                 exit()
 
@@ -336,7 +329,10 @@ class Behavpy(pd.DataFrame):
 
             return df                     
 
-        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_motion_detector))
+        motion_df = behavpy(self.groupby('id', group_keys = False).apply(wrapped_motion_detector))
+        motion_df.meta = self.meta
+
+        return  motion_df
 
     def sleep_annotation(self, time_window_length = 10, min_time_immobile = 300, motion_detector_FUN = max_velocity_detector, masking_duration = 0):
         """Method version of the sleep annottaion function"""
@@ -362,20 +358,24 @@ class Behavpy(pd.DataFrame):
 
             return df                     
 
-        return Behavpy(self._metadata, self._data.groupby('id', group_keys = False).apply(wrapped_sleep_annotation))
+        sleep_df = behavpy(self.groupby('id', group_keys = False).apply(wrapped_sleep_annotation))
+        sleep_df.meta = self.meta
+
+        return sleep_df
 
     def wrap_time(self, wrap_time = 24, time_column = 't'):
         """replaces linear values of time in column 't' with value in hours according to the days
             default wrap time is 24 hours
             default column is 't' unless specified by user """
         hours_in_seconds = wrap_time * 60 * 60
-        self._data[time_column] = self._data[time_column].map(lambda t: t % hours_in_seconds)
+        self[time_column] = self[time_column].map(lambda t: t % hours_in_seconds)
 
     def hmm_train(self, states, observables, trans_probs = None, emiss_probs = None, start_probs = None, mov_column = 'moving', iterations = 10, t_column = 't', t_diff = 60, cache = False):
-        """Behavpy wrapper for hmmlearn package
+        """behavpy wrapper for hmmlearn package
         prints trained start, transmisiion, emission probs as a printed table
         returns a hmmlearn HMM Multinomial object
         if cache = True a .pkl file is saved locally"""
+
         from tabulate import tabulate
         from hmmlearn import hmm
         from math import floor
@@ -385,26 +385,26 @@ class Behavpy(pd.DataFrame):
         n_states = len(states)
         n_obs = len(observables)
 
-        t_delta = self._data['t'].iloc[1] - self._data['t'].iloc[0]
+        t_delta = self['t'].iloc[1] - self['t'].iloc[0]
 
         if mov_column == 'beam_crosses':
-            self._data['active'] = np.where(self._data[mov_column] == 0, 0, 1)
-            gb = np.array(self._data.groupby('id')['active'].apply(list).tolist(), dtype = 'object')    
+            self['active'] = np.where(self[mov_column] == 0, 0, 1)
+            gb = np.array(self.groupby('id')['active'].apply(list).tolist(), dtype = 'object')    
 
         else:
             # bin to 60 seconds unless t_diff is stated otherwise
             if t_delta != t_diff:
-                self._data[mov_column] = np.where(self._data[mov_column] == True, 1, 0)
-                self._data['t'] = self._data['t'].map(lambda t: 60 * floor(t / 60))
-                bin_gb = self._data.groupby(['id','t']).agg(**{
+                self[mov_column] = np.where(self[mov_column] == True, 1, 0)
+                self['t'] = self['t'].map(lambda t: 60 * floor(t / 60))
+                bin_gb = self.groupby(['id','t']).agg(**{
                     'moving' : ('moving', 'max')
                 })
                 bin_gb.reset_index(level = 1, inplace = True)
                 gb = np.array(bin_gb.groupby('id')[mov_column].apply(list).tolist(), dtype = 'object')
 
             else:
-                self._data[mov_column] = np.where(self._data[mov_column] == True, 1, 0)
-                gb = np.array(self._data.groupby('id')[mov_column].apply(list).tolist(), dtype = 'object')
+                self[mov_column] = np.where(self[mov_column] == True, 1, 0)
+                gb = np.array(self.groupby('id')[mov_column].apply(list).tolist(), dtype = 'object')
 
 
         len_seq = []
@@ -460,7 +460,7 @@ class Behavpy(pd.DataFrame):
 
         # if cache is true a .pkl file will be saved to the working directory with the date and time of the first entry in the metadata table
         if cache is True:
-            file_name = 'hmm_{}_{}.pkl'.format(self._metadata['date'].iloc[0], self._metadata['time'].iloc[0])
+            file_name = 'hmm_{}_{}.pkl'.format(self.meta['date'].iloc[0], self.meta['time'].iloc[0])
             with open(file_name, "wb") as file: pickle.dump(h, file)
 
         return h

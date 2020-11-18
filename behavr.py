@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np 
 import warnings
 from check_conform import check_conform
-from behavp_class import Behavpy
+from behavp_class import behavpy
 from format_warnings import format_Warning
 
 def set_behavpy(metadata, data):
@@ -34,7 +34,8 @@ def set_behavpy(metadata, data):
     if 'file_name' in metadata.columns:
         metadata.drop('file_name', axis = 1, inplace = True)
 
-    df = Behavpy(metadata, data)
+    df = behavpy(data)
+    df.meta = metadata
 
     return df
 

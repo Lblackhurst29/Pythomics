@@ -1,3 +1,5 @@
+# First you'll need to clone my github reposistory 
+
 # Part 1: Download the database files (db) to your local computer, run this once!
 from download_from_remote_dir import download_from_remote_dir
 
@@ -7,9 +9,9 @@ from download_from_remote_dir import download_from_remote_dir
 # Local_dir = the directory you want to save the db to, the function copies the directory tree of the source directory
 # i.e. - r'C:\Users\YOUR_NAME\Documents\ethoscope_databases'
 
-meta = r'C:\Users\lab\Documents\MRes_thesis\metadata\test.csv'
+meta = r'C:\Users\lab\Documents\MRes_thesis\metadata\test.csv' # replace with your own
 remote = 'ftp://etho-node.lab.gilest.ro/auto_generated_data/ethoscope_results/'
-local = r'C:\Users\lab\Documents\ethoscope_databases'
+local = r'C:\Users\lab\Documents\ethoscope_databases' # replace with your own
 
 download_from_remote_dir(meta, remote, local)
 
@@ -302,7 +304,6 @@ for i, c, n, t in zip(range(0,4), colours, label, transparent_col):
     fig.add_trace(lower_bound)
 
 # Light-Dark annotaion bars
-# Dotted lines to show histogram / deep sleep time zones
 fig.update_layout(
     shapes=[
             dict(type="rect", x0=0, y0=-0.025, x1=12, y1=0, 
