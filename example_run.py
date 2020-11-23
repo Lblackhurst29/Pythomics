@@ -1,4 +1,4 @@
-# First you'll need to clone my github reposistory 
+# First you'll need to clone the Pythomics github reposistory 
 
 # Part 1: Download the database files (db) to your local computer, run this once!
 from download_from_remote_dir import download_from_remote_dir
@@ -47,7 +47,7 @@ df.to_pickle('example_dataframe.pkl')
 
 import pandas as pd 
 import numpy as np
-from behavr import set_behavpy
+from behavpy import set_behavpy
 
 meta = link_meta_index(meta, remote, local)
 data = pd.read_pickle('example_dataframe.pkl')
@@ -91,31 +91,32 @@ from hmmlearn import hmm
 from math import floor
 from colour import Color
 
-from behavp_class import Behavpy
-from behavr import set_behavpy
+from behavp_class import behavpy
+from behavpy import set_behavpy
 
 from datetime import datetime
 
 pd.options.mode.chained_assignment = None
 
 with open("hmm_2016-04-04_17-41-32.pkl", "rb") as file: 
-   h = pickle.load(file)
+    h = pickle.load(file)
 
-data = pd.read_pickle('sd_data_full_curated.pkl')
-data.reset_index(inplace=True)
-metadata = pd.read_pickle('sd_meta_full.pkl')
+data = pd.read_pickle('hannah_data.pkl')
+metadata = pd.read_pickle('hannah_meta.pkl')
 df = set_behavpy(metadata, data)
-df.xmv('sex', 'M', inplace=True)
-data = df.data()[df.data()['t'] < 96*60*60]
 
-data['t'] = data['t'].map(lambda t: 60 * floor(t / 60))
-bin_gb = data.groupby(['id','t']).agg(**{
-                'moving' : ('moving', 'max')
-        })
-bin_gb.reset_index(level = 1, inplace = True)
+# use xmv to filter by metavariables in the metadata
+df = df.xmv('sex', 'male')
+# use t_filter to filter the data between two time points in hours, start == 0 unless changed
+df = df.t_filter(96)
 
-gb = np.array(bin_gb.groupby(bin_gb.index)['moving'].apply(list).tolist(), dtype = 'object')
+# bin the data to 60 second intervals with a selected column and function on that column
+bin_df = df.bin_time('moving', 1, function= 'max')
 
+# groupby the index (individual flies) and produced individual numpy arrays of movement
+gb = np.array(bin_df.groupby(bin_df.index)['moving_max'].apply(list).tolist(), dtype = 'object')
+
+# call the HMM decoder on the idividual numpy arrays, storing the hidden states in states_list
 def decode_array(nested_list):
 
     logprob_list = []
@@ -134,7 +135,7 @@ def decode_array(nested_list):
 
 log, states = decode_array(gb)
 
-
+# find the percentage of time spent in each state with a 30 minute rolling window
 def hmm_pct_state(state_array, time, total_states, avg_window = 300):
     
     states_dict = {}
@@ -154,23 +155,28 @@ def hmm_pct_state(state_array, time, total_states, avg_window = 300):
                         
     return df
 
-gb2 = np.array(bin_gb.groupby(bin_gb.index)['t'].apply(list).tolist(), dtype = 'object')
+# groupby the individual flies and produce a numpy array of the time stamp series
+gb2 = np.array(bin_df.groupby(bin_df.index)['t_bin'].apply(list).tolist(), dtype = 'object')
 
 df_list = pd.DataFrame()
 counter = 1
 
+# match hidden states to their time stamp
 for l, t in zip(states, gb2):
     df = hmm_pct_state(l, t, [0,1,2,3], avg_window = 30)
     df.insert(0, 'id', counter) 
     df_list = df_list.append(df, ignore_index= True)
     counter += 1
 
+# wrap by 24 hours and change 't' to be in hours, not seconds
 df_list['t'] = df_list['t'].map(lambda t: t % 86400)
 df_list['t'] = df_list['t'] / (60*60)
 
+# standard deviation function
 def pop_std(array):
-    return np.std(array, ddof = 0)
+    return np.std(array, ddof = 1)
 
+# find the average at each time point across all flies
 gb = df_list.groupby('t').agg(**{
             'mean_0' : ('state_0', 'mean'), 
             'SD_0' : ('state_0', pop_std),
@@ -312,6 +318,7 @@ fig.update_layout(
             line=dict(color="black", width=3) ,fillcolor="black")
             ])
 
+# use this to save graph to a pdf locally
 #location = r'C:\Users\lab\Documents\MRes_thesis\figures\fig1\fig1b.pdf'
 #fig.write_image(location, width=900, height=650)
 

@@ -13,3 +13,5 @@ _pycache_
 f.py 
 fig.py 
 graph_play.py 
+GHMM.py
+test_class.py

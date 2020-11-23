@@ -28,8 +28,8 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     # check and tidy df, removing un-needed columns and duplicated machine names
     if 'machine_name' not in meta_df.columns or 'date' not in meta_df.columns:
         sys.exit("Column(s) 'machine_name' and/or 'date' missing from metadata file")
-    meta_df = meta_df[['machine_name', 'date']]
-    meta_df.drop_duplicates(subset = ['machine_name'], keep = 'first', inplace = True, ignore_index = False)
+    meta_df['check'] = meta_df['machine_name'] + meta_df['date']
+    meta_df.drop_duplicates(subset = ['check'], keep = 'first', inplace = True, ignore_index = False)
 
     # check the date format is YYYY-MM-DD, without this format the df merge will return empty
     # will correct to YYYY-MM-DD in a select few cases
@@ -75,10 +75,10 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
     # merge df's on the machine_name and date columns to find subset of .db
     merge_df = pd.merge(index_df, meta_df, on = ['machine_name', 'date'], right_index = True)
-
     # retain index for use later
     path_index = merge_df.index.tolist()
     paths = np.array(index_files.loc[path_index, :].apply(list), dtype = 'object')
+    print(paths)
 
     def download_database(remote_dir, work_dir, local_dir, file_name, file_size):
         """ Connects to remote FTP server and saves to designated local path, retains file name """
@@ -129,6 +129,7 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
     for j in paths:
         print('Downloading {}... {}/{}'.format(j[0].split('/')[1], counter, len(merge_df)))
+
         if counter == 1:
             start = time.time()
             p = os.path.split(j[0])
@@ -137,8 +138,9 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
             t = stop - start
             times.append(t)
             counter += 1
+
         else:
-            av_time = round((np.mean(times)/60) * len(merge_df))
+            av_time = round((np.mean(times)/60) * (len(merge_df)-counter))
             print('Estimated finish time: {} mins'.format(av_time)) 
             start = time.time()
             p = os.path.split(j[0])

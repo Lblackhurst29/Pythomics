@@ -64,19 +64,17 @@ class behavpy(pd.DataFrame):
 
         return t_filter_df
 
-    def rejoin(self, new_column, inplace = False):
-        """joins the data of a behavpy table to its own metadata"""
+    def rejoin(self, new_column):
+        """joins a new column of metadata"""
 
         check_conform(new_column)
 
-        if inplace is True:
-            self.meta = self.meta.join(new_column, on = 'id')
+        # subclassed behavpy cant use merge, join, or concat (known bug)
+        m = pd.DataFrame(self.meta)
+        new_m = m.join(new_column, on = 'id')
 
-
-        else:
-            rejoin_df = behavpy(self.meta.join(new_column, on = 'id'), self)
-    
-            return rejoin_df
+        # Overwrite old metadata with 
+        self.meta = new_m
 
     def pivot(self, group, function):
         """ wrapper for the groupby pandas method
@@ -395,7 +393,7 @@ class behavpy(pd.DataFrame):
             # bin to 60 seconds unless t_diff is stated otherwise
             if t_delta != t_diff:
                 self[mov_column] = np.where(self[mov_column] == True, 1, 0)
-                self['t'] = self['t'].map(lambda t: 60 * floor(t / 60))
+                self['t'] = self['t'].map(lambda t: t_diff * floor(t / 60))
                 bin_gb = self.groupby(['id','t']).agg(**{
                     'moving' : ('moving', 'max')
                 })
