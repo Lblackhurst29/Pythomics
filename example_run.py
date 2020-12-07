@@ -1,4 +1,4 @@
-# First you'll need to clone the Pythomics github reposistory 
+# First you'll need to clone my github reposistory 
 
 # Part 1: Download the database files (db) to your local computer, run this once!
 from download_from_remote_dir import download_from_remote_dir
@@ -10,7 +10,7 @@ from download_from_remote_dir import download_from_remote_dir
 # i.e. - r'C:\Users\YOUR_NAME\Documents\ethoscope_databases'
 
 meta = r'C:\Users\lab\Documents\MRes_thesis\metadata\test.csv' # replace with your own
-remote = 'ftp://etho-node.lab.gilest.ro/auto_generated_data/ethoscope_results/'
+remote = 'ftp://turing.lab.gilest.ro/auto_generated_data/ethoscope_results'
 local = r'C:\Users\lab\Documents\ethoscope_databases' # replace with your own
 
 download_from_remote_dir(meta, remote, local)
@@ -75,8 +75,6 @@ em_prob =  np.array([[1, 0],
 # If cache = True it will make a pickle file with an object with the trained probabilites
 df.hmm_train(states, obs, t_prob, em_prob, cache = True)
 
-#--------------------------------------------------------------------------------------------------------------------
-
 # Part 4 - Create a 24 hour wrapped figure of the 4 hidden states, example
 
 import pickle
@@ -98,23 +96,35 @@ from datetime import datetime
 
 pd.options.mode.chained_assignment = None
 
-with open("hmm_2016-04-04_17-41-32.pkl", "rb") as file: 
+#with open("hmm_2016-04-04_17-41-32.pkl", "rb") as file: 
+#    h = pickle.load(file)
+
+with open("paradox_hmm.pkl", "rb") as file: 
     h = pickle.load(file)
 
-data = pd.read_pickle('hannah_data.pkl')
-metadata = pd.read_pickle('hannah_meta.pkl')
+metadata = pd.read_pickle('sd_small_30_meta.pkl')
+data = pd.read_pickle('sd_small_30.pkl')
 df = set_behavpy(metadata, data)
 
-# use xmv to filter by metavariables in the metadata
-df = df.xmv('sex', 'male')
+df = df.xmv('sex', 'M')
+
 # use t_filter to filter the data between two time points in hours, start == 0 unless changed
 df = df.t_filter(96)
+
+# change the movement column of choice to intergers, 1 == active, 0 == inactive
+df['moving'] = np.where(df['moving'] == True, 1, 0)
 
 # bin the data to 60 second intervals with a selected column and function on that column
 bin_df = df.bin_time('moving', 1, function= 'max')
 
 # groupby the index (individual flies) and produced individual numpy arrays of movement
 gb = np.array(bin_df.groupby(bin_df.index)['moving_max'].apply(list).tolist(), dtype = 'object')
+
+curated_gb = []
+
+for i in gb:
+    if len(i) >= 1440:
+        curated_gb.append(i)
 
 # call the HMM decoder on the idividual numpy arrays, storing the hidden states in states_list
 def decode_array(nested_list):
@@ -133,7 +143,7 @@ def decode_array(nested_list):
         
     return logprob_list, states_list
 
-log, states = decode_array(gb)
+log, states = decode_array(curated_gb)
 
 # find the percentage of time spent in each state with a 30 minute rolling window
 def hmm_pct_state(state_array, time, total_states, avg_window = 300):
@@ -158,17 +168,24 @@ def hmm_pct_state(state_array, time, total_states, avg_window = 300):
 # groupby the individual flies and produce a numpy array of the time stamp series
 gb2 = np.array(bin_df.groupby(bin_df.index)['t_bin'].apply(list).tolist(), dtype = 'object')
 
+curated_gb2 = []
+
+for i in gb2:
+    if len(i) >= 1440:
+        curated_gb2.append(i)
+
 df_list = pd.DataFrame()
 counter = 1
 
 # match hidden states to their time stamp
-for l, t in zip(states, gb2):
+for l, t in zip(states, curated_gb2):
     df = hmm_pct_state(l, t, [0,1,2,3], avg_window = 30)
     df.insert(0, 'id', counter) 
     df_list = df_list.append(df, ignore_index= True)
     counter += 1
 
 # wrap by 24 hours and change 't' to be in hours, not seconds
+print(df_list)
 df_list['t'] = df_list['t'].map(lambda t: t % 86400)
 df_list['t'] = df_list['t'] / (60*60)
 
@@ -251,9 +268,9 @@ layout = go.Layout(
 
 fig = go.Figure(layout = layout)
 
-colours = ['blue', 'green', 'orange', 'red']
-transparent_col = ['rgba(0, 0, 255, 0.2)', 'rgba(0, 128, 0, 0.2)', 'rgba(255, 165, 0, 0.2)', 'rgba(255, 0, 0, 0.2)']
-label = ['Deep Sleep', 'Light Sleep', 'Light Awake', 'Full Awake']
+colours = ['red', 'orange', 'green', 'blue']
+transparent_col = ['rgba(255, 0, 0, 0.2)', 'rgba(255, 165, 0, 0.2)', 'rgba(0, 128, 0, 0.2)' , 'rgba(0, 0, 255, 0.2)']
+label = ['Wake', 'Prior_Sleep', 'Early_sleep', 'Late_sleep']
 
 for i, c, n, t in zip(range(0,4), colours, label, transparent_col):
     mean = 'mean_{}'.format(i)

@@ -96,6 +96,28 @@ class behavpy(pd.DataFrame):
 
         return pivot
 
+    def sleep_contiguous(self, column = 'moving', min_valid_time = 300):
+        """ fs = sampling frequency (Hz), min_valid_time = min amount immobile time that counts as sleep (i.e 5 mins) """
+
+        from rle import rle
+
+        t_delta = self['t'].iloc[1] - self['t'].iloc[0] 
+        fs = 1/t_delta
+
+        moving = self[column]
+
+        min_len = fs * min_valid_time
+        r_sleep =  rle(np.logical_not(moving)) 
+        valid_runs = r_sleep[2] >= min_len 
+        r_sleep_mod = valid_runs & r_sleep[0]
+        r_small = []
+        counter = 0
+        for i in r_sleep_mod:
+            r_small += ([i] * r_sleep[2][counter])
+            counter += 1
+
+        self['asleep'] = r_small
+
     def sleep_bout_analysis(self, sleep_var = 'asleep', as_hist = False, relative = True, min_bins = 30, asleep = True):
         """ takes a column with boolean values that represents sleep
             returns a behavpy DataFrame object with duration and t start of each boolean sequence 

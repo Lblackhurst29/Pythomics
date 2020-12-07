@@ -78,23 +78,22 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
     # retain index for use later
     path_index = merge_df.index.tolist()
     paths = np.array(index_files.loc[path_index, :].apply(list), dtype = 'object')
-    print(paths)
 
     def download_database(remote_dir, work_dir, local_dir, file_name, file_size):
         """ Connects to remote FTP server and saves to designated local path, retains file name """
         
         #create local copy of directory tree from ftp server
         os.chdir(local_dir)
-        path = (local_dir + work_dir)
+        win_path = (local_dir + work_dir.replace('/', '\\'))
+        
         try:
-            os.makedirs(path)
+            os.makedirs(win_path)
         except OSError as exc:
-            if exc.errno == errno.EEXIST and os.path.isdir(path):
+            if exc.errno == errno.EEXIST and os.path.isdir(win_path):
                 pass
             else:
                 raise
 
-        win_path = (local_dir + work_dir.replace('/', '\\'))
         file_path = os.path.join(win_path, file_name)
 
         if os.access(file_path, os.R_OK):
@@ -129,22 +128,22 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
 
     for j in paths:
         print('Downloading {}... {}/{}'.format(j[0].split('/')[1], counter, len(merge_df)))
-
         if counter == 1:
             start = time.time()
             p = os.path.split(j[0])
-            download(work_dir = parse.path+p[0], file_name = p[1], file_size = j[1])
+            download(work_dir = parse.path + '/' + p[0], file_name = p[1], file_size = j[1])
             stop = time.time()
             t = stop - start
             times.append(t)
             counter += 1
 
         else:
+            print('second')
             av_time = round((np.mean(times)/60) * (len(merge_df)-counter))
             print('Estimated finish time: {} mins'.format(av_time)) 
             start = time.time()
             p = os.path.split(j[0])
-            download(work_dir=parse.path+p[0], file_name=p[1], file_size = j[1])
+            download(work_dir=parse.path + '/' + p[0], file_name=p[1], file_size = j[1])
             stop = time.time()
             t = stop - start
             times.append(t)

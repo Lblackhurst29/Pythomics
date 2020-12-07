@@ -12,6 +12,4 @@ _pycache_
 *.RDS
 f.py 
 fig.py 
-graph_play.py 
-GHMM.py
-test_class.py
+test.py
