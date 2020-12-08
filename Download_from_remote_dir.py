@@ -138,7 +138,6 @@ def download_from_remote_dir(meta, remote_dir, local_dir, index = None):
             counter += 1
 
         else:
-            print('second')
             av_time = round((np.mean(times)/60) * (len(merge_df)-counter))
             print('Estimated finish time: {} mins'.format(av_time)) 
             start = time.time()
