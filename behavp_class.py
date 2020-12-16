@@ -34,6 +34,23 @@ class behavpy(pd.DataFrame):
         """Expand metavariable from the behavpy object
         returns a behavpy dataframe matched to the entered metavariable"""
 
+        if column == 'id':
+
+            if metavariable not in self.meta.index.tolist():
+                warnings.warn('Metavariablle "{}" is not in the id column'.format(metavariable))
+                exit()
+
+            index_list = self.meta[self.meta.index == metavariable].index.values
+
+            # find interection of meta and data id incase metadata contains more id's than in data
+            data_id = list(set(self.index.values))
+            new_index_list = np.intersect1d(index_list, data_id)
+
+            xmv_df = behavpy(self[self.index.isin(index_list)])
+            xmv_df.meta = self.meta[self.meta.index.isin(new_index_list)]
+
+            return xmv_df
+
         if column not in self.meta.columns:
             warnings.warn('Column heading "{}" is not in the metadata table'.format(column))
             exit()
@@ -41,7 +58,6 @@ class behavpy(pd.DataFrame):
         if metavariable not in self.meta[column].tolist():
             warnings.warn('Metavariablle "{}" is not in the column'.format(metavariable))
             exit()
-
 
         index_list = self.meta[self.meta[column] == metavariable].index.values
 
@@ -76,11 +92,27 @@ class behavpy(pd.DataFrame):
         # Overwrite old metadata with 
         self.meta = new_m
 
+    def concat(self, other_df):
+        """wrapper for pd.concat that also concats metadata"""
+
+        if isinstance(other_df, behavpy) is not True:
+            warnings.warn('Object to concat is not a Behavpy object')
+            exit()
+
+        meta = pd.concat([self.meta, other_df.meta])
+
+        new = pd.concat([self, other_df])  
+
+        new.meta = meta
+
+        return new
+
+
     def pivot(self, group, function):
         """ wrapper for the groupby pandas method
             will always group by the id on the data df attribute
             takes a column input to perform a function on
-            functin can be standard "mean", "max".... ect
+            function can be standard "mean", "max".... ect
             can also be a user defined function
             returns a new dataframe not a behavpy dataframe """
 
@@ -484,6 +516,23 @@ class behavpy(pd.DataFrame):
             with open(file_name, "wb") as file: pickle.dump(h, file)
 
         return h
+
+    def baseline(self, column):
+        """adds the time stated in a baseline_days column
+            from days to seconds"""
+
+        if column not in self.meta.columns:
+            warnings.warn('Baseline days column: "{}", is not in the metadata table'.format(column))
+            exit()
+
+        dict = self.meta[column].to_dict()
+
+        def d2s(x):
+            id = x.name
+            seconds = dict.get(id) * 86400
+            return x['t'] + seconds
+
+        self['t'] = self.apply(d2s, axis = 1)
 
 
 

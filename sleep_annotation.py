@@ -32,7 +32,6 @@ def sleep_annotation(data,
     d_small['is_interpolated'] = np.where(d_small['t'].isin(missing_values), True, False)
     d_small['moving'] = np.where(d_small['is_interpolated'] == True, False, d_small['moving'])
 
-
     def sleep_contiguous(moving, fs, min_valid_time = 300):
         """ fs = sampling frequency (Hz), min_valid_time = min amount immobile time that counts as sleep (i.e 5 mins) """
         min_len = fs * min_valid_time
