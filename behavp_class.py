@@ -37,7 +37,7 @@ class behavpy(pd.DataFrame):
         if column == 'id':
 
             if metavariable not in self.meta.index.tolist():
-                warnings.warn('Metavariablle "{}" is not in the id column'.format(metavariable))
+                warnings.warn('Metavariable "{}" is not in the id column'.format(metavariable))
                 exit()
 
             index_list = self.meta[self.meta.index == metavariable].index.values
@@ -56,7 +56,7 @@ class behavpy(pd.DataFrame):
             exit()
         
         if metavariable not in self.meta[column].tolist():
-            warnings.warn('Metavariablle "{}" is not in the column'.format(metavariable))
+            warnings.warn('Metavariable "{}" is not in the column'.format(metavariable))
             exit()
 
         index_list = self.meta[self.meta[column] == metavariable].index.values
@@ -92,16 +92,23 @@ class behavpy(pd.DataFrame):
         # Overwrite old metadata with 
         self.meta = new_m
 
-    def concat(self, other_df):
+    def concat(self, *args):
         """wrapper for pd.concat that also concats metadata"""
 
-        if isinstance(other_df, behavpy) is not True:
-            warnings.warn('Object to concat is not a Behavpy object')
-            exit()
+        meta_list = [self.meta]
+        data_list = [self]
 
-        meta = pd.concat([self.meta, other_df.meta])
+        for df in args:
 
-        new = pd.concat([self, other_df])  
+            if isinstance(df, behavpy) is not True:
+                warnings.warn('Object(s) to concat is not a Behavpy object')
+                exit()
+
+            meta_list.append(df.meta)
+            data_list.append(df)
+
+        meta = pd.concat(meta_list)
+        new = pd.concat(data_list) 
 
         new.meta = meta
 
@@ -517,7 +524,7 @@ class behavpy(pd.DataFrame):
 
         return h
 
-    def baseline(self, column):
+    def baseline(self, column, inplace = False):
         """adds the time stated in a baseline_days column
             from days to seconds"""
 
@@ -532,7 +539,15 @@ class behavpy(pd.DataFrame):
             seconds = dict.get(id) * 86400
             return x['t'] + seconds
 
-        self['t'] = self.apply(d2s, axis = 1)
+        if inplace is True:
+            self['t'] = self.apply(d2s, axis = 1)
+
+        else:
+            new = copy.deepcopy(self)
+            new['t'] = new.apply(d2s, axis = 1)
+
+            return new
+
 
 
 
