@@ -548,6 +548,71 @@ class behavpy(pd.DataFrame):
 
             return new
 
+    def heatmap(self):
+        import plotly as py 
+        import plotly.graph_objs as go 
+
+        """Create an aligned heatmap using plotly"""
+        # change movement values from boolean to intergers and bin to 30 mins finding the average
+        self['moving'] = np.where(self['moving'] == True, 1, 0)
+        self = self.bin_time(column = 'moving', bin_mins = 30)
+        self['t_bin'] = self['t_bin'] / (60*60)
+        # create an array starting with the earliest half hour bin and the last with 0.5 intervals
+        start = self['t_bin'].min().astype(int)
+        end = self['t_bin'].max().astype(int)
+        time_list = np.array([x / 10 for x in range(start*10, end*10, 5)])
+        time_map = pd.Series(time_list, 
+                    name = 't_bin')
+
+        def align_data(data):
+            """merge the individual fly groups time with the time map, filling in missing point with NaN values"""
+
+            index_name = data.index[0]
+
+            df = data.merge(time_map, how = 'right', on = 't_bin', copy = False).sort_values(by=['t_bin'])
+
+            # readd the old id index lost in the merge
+            old_index = pd.Index([index_name] * len(df.index), name = 'id')
+            df.set_index(old_index, inplace =True)  
+
+            return df                    
+
+        heatmap_df = self.groupby('id', group_keys = False).apply(align_data)
+
+        gbm = heatmap_df.groupby(heatmap_df.index)['moving_mean'].apply(list)
+        id = heatmap_df.groupby(heatmap_df.index)['t_bin'].mean().index.tolist()
+
+        fig = go.Figure(data=go.Heatmap(
+                        z = gbm,
+                        x = time_list,
+                        y = id,
+                        colorscale = 'Viridis'))
+
+        fig.update_layout(
+            xaxis = dict(
+                zeroline = False,
+                color = 'black',
+                linecolor = 'black',
+                gridcolor = 'black',
+                title = dict(
+                    text = 'ZT Time (Hours)',
+                    font = dict(
+                        size = 18,
+                        color = 'black'
+                    )
+                ),
+                tick0 = 0,
+                dtick = 12,
+                ticks = 'outside',
+                tickwidth = 2,
+                tickfont = dict(
+                    size = 16
+                ),
+                linewidth = 2)
+                )
+
+        fig.show()
+
 
 
 
